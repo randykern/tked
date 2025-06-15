@@ -1,5 +1,7 @@
 package rope
 
+import "io"
+
 // Node represents a node in the rope tree. A node is either an internal
 // node with left/right children, or a leaf node that holds a substring.
 type Node struct {
@@ -88,6 +90,28 @@ type binaryRope struct {
 // New creates a new Rope containing the provided string.
 func New(s string) Rope {
 	return &binaryRope{root: leaf(s)}
+}
+
+// Read consumes all data from r and returns a new Rope containing it.
+// Any error encountered while reading is returned.
+func Read(r io.Reader) (Rope, error) {
+	if r == nil {
+		return &binaryRope{}, nil
+	}
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+	return New(string(data)), nil
+}
+
+// Write writes the contents of rp to w. It returns the number of bytes written
+// and any error encountered during the write.
+func Write(w io.Writer, rp Rope) (int, error) {
+	if w == nil || rp == nil {
+		return 0, nil
+	}
+	return io.WriteString(w, rp.String())
 }
 
 // Len returns the number of bytes stored in the rope.

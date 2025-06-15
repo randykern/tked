@@ -1,6 +1,10 @@
 package rope
 
-import "testing"
+import (
+	"errors"
+	"strings"
+	"testing"
+)
 
 func TestNewLenString(t *testing.T) {
 	r := New("hello world")
@@ -9,6 +13,57 @@ func TestNewLenString(t *testing.T) {
 	}
 	if got := r.String(); got != "hello world" {
 		t.Fatalf("expected %q got %q", "hello world", got)
+	}
+}
+
+func TestRead(t *testing.T) {
+	br, err := Read(strings.NewReader("hello world"))
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got := br.String(); got != "hello world" {
+		t.Fatalf("expected %q got %q", "hello world", got)
+	}
+	if br.Len() != len("hello world") {
+		t.Fatalf("expected length %d got %d", len("hello world"), br.Len())
+	}
+}
+
+type errReader struct{}
+
+func (errReader) Read([]byte) (int, error) {
+	return 0, errors.New("fail")
+}
+
+func TestReadError(t *testing.T) {
+	if _, err := Read(errReader{}); err == nil {
+		t.Fatalf("expected error")
+	}
+}
+
+func TestWrite(t *testing.T) {
+	r := New("hello world")
+	var buf strings.Builder
+	n, err := Write(&buf, r)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n != len("hello world") {
+		t.Fatalf("expected %d bytes written got %d", len("hello world"), n)
+	}
+	if got := buf.String(); got != "hello world" {
+		t.Fatalf("expected %q got %q", "hello world", got)
+	}
+}
+
+type errWriter struct{}
+
+func (errWriter) Write([]byte) (int, error) { return 0, errors.New("fail") }
+
+func TestWriteError(t *testing.T) {
+	r := New("hello")
+	if _, err := Write(errWriter{}, r); err == nil {
+		t.Fatalf("expected error")
 	}
 }
 
