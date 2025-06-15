@@ -63,19 +63,35 @@ func splitNode(n *Node, idx int) (*Node, *Node) {
 	return n.left, n.right
 }
 
-// Rope is a binary rope structure for efficiently storing and editing large
-// strings.
-type Rope struct {
+// Rope describes the operations supported by a rope implementation.
+type Rope interface {
+	// Len returns the number of bytes stored in the rope.
+	Len() int
+	// Split splits the rope at the provided index and returns two new ropes.
+	Split(idx int) (Rope, Rope)
+	// Insert returns a new rope with s inserted at idx.
+	Insert(idx int, s string) Rope
+	// Delete returns a new rope with the range [start,end) removed.
+	Delete(start, end int) Rope
+	// String returns the contents of the rope as a string.
+	String() string
+	// Index returns the byte at position idx. ok will be false if idx is out of range.
+	Index(idx int) (byte, bool)
+}
+
+// binaryRope is a binary rope structure for efficiently storing and editing large
+// strings. It implements the Rope interface.
+type binaryRope struct {
 	root *Node
 }
 
 // New creates a new Rope containing the provided string.
-func New(s string) *Rope {
-	return &Rope{root: leaf(s)}
+func New(s string) Rope {
+	return &binaryRope{root: leaf(s)}
 }
 
 // Len returns the number of bytes stored in the rope.
-func (r *Rope) Len() int {
+func (r *binaryRope) Len() int {
 	if r == nil || r.root == nil {
 		return 0
 	}
@@ -83,33 +99,35 @@ func (r *Rope) Len() int {
 }
 
 // Concat returns a new rope that is the concatenation of r1 and r2.
-func Concat(r1, r2 *Rope) *Rope {
-	if r1 == nil || r1.root == nil {
+func Concat(r1, r2 Rope) Rope {
+	br1, _ := r1.(*binaryRope)
+	br2, _ := r2.(*binaryRope)
+	if br1 == nil || br1.root == nil {
 		return r2
 	}
-	if r2 == nil || r2.root == nil {
+	if br2 == nil || br2.root == nil {
 		return r1
 	}
-	return &Rope{root: concat(r1.root, r2.root)}
+	return &binaryRope{root: concat(br1.root, br2.root)}
 }
 
 // Split splits the rope at the provided index and returns two new ropes.
-func (r *Rope) Split(idx int) (*Rope, *Rope) {
+func (r *binaryRope) Split(idx int) (Rope, Rope) {
 	if r == nil {
 		return nil, nil
 	}
 	l, rgt := splitNode(r.root, idx)
-	return &Rope{root: l}, &Rope{root: rgt}
+	return &binaryRope{root: l}, &binaryRope{root: rgt}
 }
 
 // Insert returns a new rope with s inserted at idx.
-func (r *Rope) Insert(idx int, s string) *Rope {
+func (r *binaryRope) Insert(idx int, s string) Rope {
 	left, right := r.Split(idx)
 	return Concat(Concat(left, New(s)), right)
 }
 
 // Delete returns a new rope with the range [start,end) removed.
-func (r *Rope) Delete(start, end int) *Rope {
+func (r *binaryRope) Delete(start, end int) Rope {
 	if start >= end {
 		return r
 	}
@@ -119,7 +137,7 @@ func (r *Rope) Delete(start, end int) *Rope {
 }
 
 // String returns the full contents of the rope as a string.
-func (r *Rope) String() string {
+func (r *binaryRope) String() string {
 	var b []byte
 	var traverse func(n *Node)
 	traverse = func(n *Node) {
@@ -139,7 +157,7 @@ func (r *Rope) String() string {
 
 // Index returns the byte at position idx. It returns ok=false if the index is
 // out of range.
-func (r *Rope) Index(idx int) (byte, bool) {
+func (r *binaryRope) Index(idx int) (byte, bool) {
 	if r == nil || idx < 0 || idx >= r.Len() {
 		return 0, false
 	}
