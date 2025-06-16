@@ -12,7 +12,7 @@ import (
 func main() {
 	flag.Parse()
 
-	app, err := app.New()
+	app, err := app.NewApp()
 	if err != nil {
 		log.Fatalf("Failed to create app: %v", err)
 	}

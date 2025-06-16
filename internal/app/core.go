@@ -308,16 +308,15 @@ func (a *app) OpenFile(filename string) error {
 	return nil
 }
 
-func New() (App, error) {
+func NewApp() (App, error) {
 	buffer, err := NewBuffer("")
 	if err != nil {
 		return nil, err
 	}
 
-	a := &app{
-		buffers: []Buffer{buffer},
-		views:   []View{NewView(buffer)},
-	}
-	a.statusBar = NewStatusBar()
-	return a, nil
+	return &app{
+		buffers:   []Buffer{buffer},
+		views:     []View{NewView(buffer)},
+		statusBar: NewStatusBar(),
+	}, nil
 }
