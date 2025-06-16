@@ -1,5 +1,7 @@
 package app
 
+import "tked/internal/rope"
+
 type View interface {
 	// Buffer returns the buffer that the view is displaying.
 	Buffer() Buffer
@@ -11,9 +13,11 @@ type View interface {
 	Cursor() (int, int)
 	// SetCursor updates the current cursor position.
 	SetCursor(row, col int)
+	// InsertRune inserts a rune into the buffer at the cursor position.
+	InsertRune(r rune)
 }
 
-type view struct {
+type viewState struct {
 	buffer    Buffer
 	top       int
 	left      int
@@ -21,34 +25,111 @@ type view struct {
 	cursorCol int
 }
 
+type view struct {
+	states []viewState
+}
+
 func (v *view) Buffer() Buffer {
-	return v.buffer
+	if len(v.states) == 0 {
+		return nil
+	}
+	return v.states[0].buffer
 }
 
 func (v *view) TopLeft() (int, int) {
-	return v.top, v.left
+	if len(v.states) == 0 {
+		return 0, 0
+	}
+	s := v.states[0]
+	return s.top, s.left
 }
 
 func (v *view) SetTopLeft(top, left int) {
-	v.top = max(0, top)
-	v.left = max(0, left)
+	if len(v.states) == 0 {
+		return
+	}
+	s := &v.states[0]
+	s.top = max(0, top)
+	s.left = max(0, left)
 }
 
 func (v *view) Cursor() (int, int) {
-	return v.cursorRow, v.cursorCol
+	if len(v.states) == 0 {
+		return 0, 0
+	}
+	s := v.states[0]
+	return s.cursorRow, s.cursorCol
 }
 
 func (v *view) SetCursor(row, col int) {
-	v.cursorRow = max(0, row)
-	v.cursorCol = max(0, col)
+	if len(v.states) == 0 {
+		return
+	}
+	s := &v.states[0]
+	s.cursorRow = max(0, row)
+	s.cursorCol = max(0, col)
+}
+
+func bufferIndexAt(r rope.Rope, row, col int) int {
+	idx := 0
+	currRow := 0
+	currCol := 0
+	for {
+		if currRow == row && currCol == col {
+			return idx
+		}
+		b, ok := r.Index(idx)
+		if !ok {
+			return idx
+		}
+		if b == '\n' {
+			currRow++
+			currCol = 0
+		} else {
+			currCol++
+		}
+		idx++
+	}
+}
+
+func (v *view) InsertRune(r rune) {
+	if len(v.states) == 0 {
+		return
+	}
+
+	curr := v.states[0]
+	idx := bufferIndexAt(curr.buffer.Contents(), curr.cursorRow, curr.cursorCol)
+	newBuf := curr.buffer.Insert(idx, string(r))
+
+	newRow := curr.cursorRow
+	newCol := curr.cursorCol
+	if r == '\n' {
+		newRow++
+		newCol = 0
+	} else {
+		newCol++
+	}
+
+	newState := viewState{
+		buffer:    newBuf,
+		top:       curr.top,
+		left:      curr.left,
+		cursorRow: newRow,
+		cursorCol: newCol,
+	}
+	v.states = append([]viewState{newState}, v.states...)
 }
 
 func NewView(buffer Buffer) View {
 	return &view{
-		buffer:    buffer,
-		top:       0,
-		left:      0,
-		cursorRow: 0,
-		cursorCol: 0,
+		states: []viewState{
+			{
+				buffer:    buffer,
+				top:       0,
+				left:      0,
+				cursorRow: 0,
+				cursorCol: 0,
+			},
+		},
 	}
 }
