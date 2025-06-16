@@ -10,9 +10,9 @@ type App interface {
 }
 
 type app struct {
-	buffers   []Buffer
-	views     []View
-	statusBar StatusBar
+	views       []View
+	statusBar   StatusBar
+	currentView int
 }
 
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
@@ -103,12 +103,13 @@ func (a *app) Run(screen tcell.Screen) {
 		a.statusBar.Draw(screen, view)
 	}
 
-	// Draw initial buffer
+	// Draw initial view
 	if len(a.views) > 0 {
 		drawView(a.views[0], screen)
 	}
 
 	// Event loop
+eventLoop:
 	for {
 		// Update screen
 		screen.Show()
@@ -121,10 +122,8 @@ func (a *app) Run(screen tcell.Screen) {
 		case *tcell.EventResize:
 			screen.Sync()
 		case *tcell.EventKey:
-			if ev.Key() == tcell.KeyEscape || ev.Key() == tcell.KeyCtrlC {
-				return
-			} else if ev.Key() == tcell.KeyCtrlL {
-				screen.Sync()
+			if ev.Key() == tcell.KeyEscape {
+				break eventLoop
 			} else if ev.Key() == tcell.KeyCtrlZ {
 				if len(a.views) > 0 {
 					a.views[0].Undo()
@@ -295,14 +294,14 @@ func (a *app) OpenFile(filename string) error {
 		return err
 	}
 
-	a.buffers = append(a.buffers, buffer)
-
 	view := NewView(buffer)
-	a.views = append(a.views, view)
 
-	if a.buffers[0].GetFilename() == "" && !a.buffers[0].IsDirty() {
-		a.buffers = a.buffers[1:]
-		a.views = a.views[1:]
+	// If the current view is empty, replace it with the new one
+	if a.views[a.currentView].Buffer().GetFilename() == "" && !a.views[a.currentView].Buffer().IsDirty() {
+		a.views[a.currentView] = view
+	} else {
+		a.views = append(a.views, view)
+		a.currentView = len(a.views) - 1
 	}
 
 	return nil
@@ -315,8 +314,8 @@ func NewApp() (App, error) {
 	}
 
 	return &app{
-		buffers:   []Buffer{buffer},
-		views:     []View{NewView(buffer)},
-		statusBar: NewStatusBar(),
+		views:       []View{NewView(buffer)},
+		statusBar:   NewStatusBar(),
+		currentView: 0,
 	}, nil
 }
