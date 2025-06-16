@@ -126,6 +126,13 @@ func drawView(v View, s tcell.Screen) {
 
 		bufferCol++
 	}
+
+	cursorRow, cursorCol := v.Cursor()
+	if cursorRow >= viewTop && cursorRow < viewTop+screenHeight-1 && cursorCol >= viewLeft && cursorCol < viewLeft+screenWidth-1 {
+		s.ShowCursor(cursorCol-viewLeft, cursorRow-viewTop)
+	} else {
+		s.HideCursor()
+	}
 }
 
 func (a *app) Run(screen tcell.Screen) {
@@ -175,6 +182,25 @@ func (a *app) Run(screen tcell.Screen) {
 				screen.Sync()
 			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
 				screen.Clear()
+			} else if ev.Key() == tcell.KeyUp || ev.Key() == tcell.KeyDown || ev.Key() == tcell.KeyLeft || ev.Key() == tcell.KeyRight {
+				if len(a.views) > 0 {
+					row, col := a.views[0].Cursor()
+					switch ev.Key() {
+					case tcell.KeyUp:
+						if row > 0 {
+							row--
+						}
+					case tcell.KeyDown:
+						row++
+					case tcell.KeyLeft:
+						if col > 0 {
+							col--
+						}
+					case tcell.KeyRight:
+						col++
+					}
+					a.views[0].SetCursor(row, col)
+				}
 			}
 		case *tcell.EventMouse:
 			x, y := ev.Position()
