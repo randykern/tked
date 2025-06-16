@@ -82,7 +82,9 @@ func drawStatusBar(a *app, s tcell.Screen) {
 	}
 
 	width, height := s.Size()
+	cursorRow, cursorCol := a.views[0].Cursor()
 	drawText(s, 0, height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), filename)
+	drawText(s, len(filename), height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), fmt.Sprintf(": %d %d", cursorRow, cursorCol))
 }
 
 func drawView(v View, s tcell.Screen) {
@@ -218,9 +220,11 @@ func (a *app) Run(screen tcell.Screen) {
 					ox, oy = -1, -1
 				}
 			}
-
-			drawStatusBar(a, screen)
 		}
+
+		screen.Clear()
+		drawView(a.views[0], screen)
+		drawStatusBar(a, screen)
 	}
 }
 

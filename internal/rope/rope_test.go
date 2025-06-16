@@ -7,7 +7,7 @@ import (
 )
 
 func TestNewLenString(t *testing.T) {
-	r := New("hello world")
+	r := NewRope("hello world")
 	if r.Len() != len("hello world") {
 		t.Fatalf("expected length %d got %d", len("hello world"), r.Len())
 	}
@@ -17,7 +17,7 @@ func TestNewLenString(t *testing.T) {
 }
 
 func TestRead(t *testing.T) {
-	br, err := Read(strings.NewReader("hello world"))
+	br, err := NewFromReader(strings.NewReader("hello world"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -36,13 +36,13 @@ func (errReader) Read([]byte) (int, error) {
 }
 
 func TestReadError(t *testing.T) {
-	if _, err := Read(errReader{}); err == nil {
+	if _, err := NewFromReader(errReader{}); err == nil {
 		t.Fatalf("expected error")
 	}
 }
 
 func TestWrite(t *testing.T) {
-	r := New("hello world")
+	r := NewRope("hello world")
 	var buf strings.Builder
 	n, err := Write(&buf, r)
 	if err != nil {
@@ -61,15 +61,15 @@ type errWriter struct{}
 func (errWriter) Write([]byte) (int, error) { return 0, errors.New("fail") }
 
 func TestWriteError(t *testing.T) {
-	r := New("hello")
+	r := NewRope("hello")
 	if _, err := Write(errWriter{}, r); err == nil {
 		t.Fatalf("expected error")
 	}
 }
 
 func TestConcat(t *testing.T) {
-	r1 := New("hello ")
-	r2 := New("world")
+	r1 := NewRope("hello ")
+	r2 := NewRope("world")
 	r := Concat(r1, r2)
 	if got := r.String(); got != "hello world" {
 		t.Fatalf("expected %q got %q", "hello world", got)
@@ -80,7 +80,7 @@ func TestConcat(t *testing.T) {
 }
 
 func TestSplit(t *testing.T) {
-	r := New("hello world")
+	r := NewRope("hello world")
 	left, right := r.Split(5)
 	if got := left.String(); got != "hello" {
 		t.Fatalf("expected left %q got %q", "hello", got)
@@ -91,7 +91,7 @@ func TestSplit(t *testing.T) {
 }
 
 func TestInsert(t *testing.T) {
-	r := New("helloworld")
+	r := NewRope("helloworld")
 	r = r.Insert(5, " ")
 	if got := r.String(); got != "hello world" {
 		t.Fatalf("expected %q got %q", "hello world", got)
@@ -109,7 +109,7 @@ func TestInsert(t *testing.T) {
 }
 
 func TestDelete(t *testing.T) {
-	r := New("hello world")
+	r := NewRope("hello world")
 	r = r.Delete(5, 6)
 	if got := r.String(); got != "helloworld" {
 		t.Fatalf("expected %q got %q", "helloworld", got)
@@ -123,7 +123,7 @@ func TestDelete(t *testing.T) {
 
 func TestIndex(t *testing.T) {
 	data := "hello"
-	r := New(data)
+	r := NewRope(data)
 	for i := 0; i < len(data); i++ {
 		b, ok := r.Index(i)
 		if !ok {
