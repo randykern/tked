@@ -96,7 +96,11 @@ func (a *app) Run(screen tcell.Screen) {
 
 	// Draw initial status bar
 	if a.statusBar != nil {
-		a.statusBar.Draw(screen)
+		var view View
+		if len(a.views) > 0 {
+			view = a.views[0]
+		}
+		a.statusBar.Draw(screen, view)
 	}
 
 	// Draw initial buffer
@@ -280,7 +284,7 @@ func (a *app) Run(screen tcell.Screen) {
 		screen.Clear()
 		drawView(a.views[0], screen)
 		if a.statusBar != nil {
-			a.statusBar.Draw(screen)
+			a.statusBar.Draw(screen, a.views[0])
 		}
 	}
 }
@@ -314,6 +318,6 @@ func New() (App, error) {
 		buffers: []Buffer{buffer},
 		views:   []View{NewView(buffer)},
 	}
-	a.statusBar = NewStatusBar(a)
+	a.statusBar = NewStatusBar()
 	return a, nil
 }

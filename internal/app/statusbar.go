@@ -8,34 +8,32 @@ import (
 
 // StatusBar describes the behaviour of a status bar component.
 type StatusBar interface {
-	// Draw renders the status bar onto the provided screen.
-	Draw(s tcell.Screen)
+	// Draw renders the status bar for the provided view onto the provided screen.
+	Draw(s tcell.Screen, v View)
 }
 
-type statusBar struct {
-	a *app
-}
+type statusBar struct{}
 
-// NewStatusBar creates a new status bar bound to the given app.
-func NewStatusBar(a *app) StatusBar {
-	return &statusBar{a: a}
+// NewStatusBar creates a new status bar instance.
+func NewStatusBar() StatusBar {
+	return &statusBar{}
 }
 
 // Draw renders the current status bar.
-func (sb *statusBar) Draw(s tcell.Screen) {
+func (sb *statusBar) Draw(s tcell.Screen, v View) {
 	filename := "Untitled"
 	cursor := ": 1 1"
 	dirty := ""
-	if len(sb.a.views) > 0 {
-		filename = sb.a.views[0].Buffer().GetFilename()
+	if v != nil {
+		filename = v.Buffer().GetFilename()
 		if filename == "" {
 			filename = "Untitled"
 		}
 
-		cursorRow, cursorCol := sb.a.views[0].Cursor()
+		cursorRow, cursorCol := v.Cursor()
 		cursor = fmt.Sprintf(": %d %d", cursorRow+1, cursorCol+1)
 
-		if sb.a.views[0].Buffer().IsDirty() {
+		if v.Buffer().IsDirty() {
 			dirty = "*"
 		}
 	}
