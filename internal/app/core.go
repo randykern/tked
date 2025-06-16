@@ -146,6 +146,12 @@ func (a *app) Run(screen tcell.Screen) {
 				if len(a.views) > 0 {
 					a.views[0].Redo()
 				}
+			} else if ev.Key() == tcell.KeyCtrlS {
+				if len(a.views) > 0 {
+					if err := a.views[0].Buffer().Save(); err != nil {
+						// TODO: handle error properly (status bar?)
+					}
+				}
 			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
 				screen.Clear()
 			} else if ev.Key() == tcell.KeyUp || ev.Key() == tcell.KeyDown || ev.Key() == tcell.KeyLeft || ev.Key() == tcell.KeyRight {
