@@ -1,5 +1,7 @@
 package app
 
+import "tked/internal/rope"
+
 type View interface {
 	// Buffer returns the buffer that the view is displaying.
 	Buffer() Buffer
@@ -11,6 +13,8 @@ type View interface {
 	Cursor() (int, int)
 	// SetCursor updates the current cursor position.
 	SetCursor(row, col int)
+	// InsertRune inserts a rune into the buffer at the cursor position.
+	InsertRune(r rune)
 }
 
 type viewState struct {
@@ -26,6 +30,9 @@ type view struct {
 }
 
 func (v *view) Buffer() Buffer {
+	if len(v.states) == 0 {
+		return nil
+	}
 	return v.states[0].buffer
 }
 
@@ -61,6 +68,56 @@ func (v *view) SetCursor(row, col int) {
 	s := &v.states[0]
 	s.cursorRow = max(0, row)
 	s.cursorCol = max(0, col)
+}
+
+func bufferIndexAt(r rope.Rope, row, col int) int {
+	idx := 0
+	currRow := 0
+	currCol := 0
+	for {
+		if currRow == row && currCol == col {
+			return idx
+		}
+		b, ok := r.Index(idx)
+		if !ok {
+			return idx
+		}
+		if b == '\n' {
+			currRow++
+			currCol = 0
+		} else {
+			currCol++
+		}
+		idx++
+	}
+}
+
+func (v *view) InsertRune(r rune) {
+	if len(v.states) == 0 {
+		return
+	}
+
+	curr := v.states[0]
+	idx := bufferIndexAt(curr.buffer.Contents(), curr.cursorRow, curr.cursorCol)
+	newBuf := curr.buffer.Insert(idx, string(r))
+
+	newRow := curr.cursorRow
+	newCol := curr.cursorCol
+	if r == '\n' {
+		newRow++
+		newCol = 0
+	} else {
+		newCol++
+	}
+
+	newState := viewState{
+		buffer:    newBuf,
+		top:       curr.top,
+		left:      curr.left,
+		cursorRow: newRow,
+		cursorCol: newCol,
+	}
+	v.states = append([]viewState{newState}, v.states...)
 }
 
 func NewView(buffer Buffer) View {
