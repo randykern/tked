@@ -15,6 +15,8 @@ type Buffer interface {
 	// Returns a new Buffer with text inserted at the specified index.
 	// Insert returns a new Buffer with text inserted at the specified index.
 	Insert(idx int, text string) Buffer
+	// Delete returns a new Buffer with the specified range removed.
+	Delete(start, end int) Buffer
 }
 
 type buffer struct {
@@ -45,6 +47,24 @@ func (b *buffer) Insert(idx int, text string) Buffer {
 	nb := &buffer{
 		filename: b.filename,
 		contents: b.contents.Insert(idx, text),
+		dirty:    true,
+	}
+	return nb
+}
+
+func (b *buffer) Delete(start, end int) Buffer {
+	if start < 0 {
+		start = 0
+	}
+	if end > b.contents.Len() {
+		end = b.contents.Len()
+	}
+	if start > end {
+		start, end = end, start
+	}
+	nb := &buffer{
+		filename: b.filename,
+		contents: b.contents.Delete(start, end),
 		dirty:    true,
 	}
 	return nb
