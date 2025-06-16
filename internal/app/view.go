@@ -13,7 +13,7 @@ type View interface {
 	SetCursor(row, col int)
 }
 
-type view struct {
+type viewState struct {
 	buffer    Buffer
 	top       int
 	left      int
@@ -21,34 +21,58 @@ type view struct {
 	cursorCol int
 }
 
+type view struct {
+	states []viewState
+}
+
 func (v *view) Buffer() Buffer {
-	return v.buffer
+	return v.states[0].buffer
 }
 
 func (v *view) TopLeft() (int, int) {
-	return v.top, v.left
+	if len(v.states) == 0 {
+		return 0, 0
+	}
+	s := v.states[0]
+	return s.top, s.left
 }
 
 func (v *view) SetTopLeft(top, left int) {
-	v.top = max(0, top)
-	v.left = max(0, left)
+	if len(v.states) == 0 {
+		return
+	}
+	s := &v.states[0]
+	s.top = max(0, top)
+	s.left = max(0, left)
 }
 
 func (v *view) Cursor() (int, int) {
-	return v.cursorRow, v.cursorCol
+	if len(v.states) == 0 {
+		return 0, 0
+	}
+	s := v.states[0]
+	return s.cursorRow, s.cursorCol
 }
 
 func (v *view) SetCursor(row, col int) {
-	v.cursorRow = max(0, row)
-	v.cursorCol = max(0, col)
+	if len(v.states) == 0 {
+		return
+	}
+	s := &v.states[0]
+	s.cursorRow = max(0, row)
+	s.cursorCol = max(0, col)
 }
 
 func NewView(buffer Buffer) View {
 	return &view{
-		buffer:    buffer,
-		top:       0,
-		left:      0,
-		cursorRow: 0,
-		cursorCol: 0,
+		states: []viewState{
+			{
+				buffer:    buffer,
+				top:       0,
+				left:      0,
+				cursorRow: 0,
+				cursorCol: 0,
+			},
+		},
 	}
 }
