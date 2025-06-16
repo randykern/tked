@@ -98,14 +98,14 @@ func (a *app) Run(screen tcell.Screen) {
 	if a.statusBar != nil {
 		var view View
 		if len(a.views) > 0 {
-			view = a.views[0]
+			view = a.views[a.currentView]
 		}
 		a.statusBar.Draw(screen, view)
 	}
 
 	// Draw initial view
 	if len(a.views) > 0 {
-		drawView(a.views[0], screen)
+		drawView(a.views[a.currentView], screen)
 	}
 
 	// Event loop
@@ -126,15 +126,15 @@ eventLoop:
 				break eventLoop
 			} else if ev.Key() == tcell.KeyCtrlZ {
 				if len(a.views) > 0 {
-					a.views[0].Undo()
+					a.views[a.currentView].Undo()
 				}
 			} else if ev.Key() == tcell.KeyCtrlR {
 				if len(a.views) > 0 {
-					a.views[0].Redo()
+					a.views[a.currentView].Redo()
 				}
 			} else if ev.Key() == tcell.KeyCtrlS {
 				if len(a.views) > 0 {
-					if err := a.views[0].Buffer().Save(); err != nil {
+					if err := a.views[a.currentView].Buffer().Save(); err != nil {
 						// TODO: handle error properly (status bar?)
 					}
 				}
@@ -142,7 +142,7 @@ eventLoop:
 				screen.Clear()
 			} else if ev.Key() == tcell.KeyUp || ev.Key() == tcell.KeyDown || ev.Key() == tcell.KeyLeft || ev.Key() == tcell.KeyRight {
 				if len(a.views) > 0 {
-					row, col := a.views[0].Cursor()
+					row, col := a.views[a.currentView].Cursor()
 					switch ev.Key() {
 					case tcell.KeyUp:
 						row--
@@ -162,7 +162,7 @@ eventLoop:
 
 					// Adjust viewport if cursor moved outside visible area
 					width, height := screen.Size()
-					top, left := a.views[0].TopLeft()
+					top, left := a.views[a.currentView].TopLeft()
 
 					if row < top {
 						// Moved out the top of the viewport- make the new top row the cursor row
@@ -178,16 +178,16 @@ eventLoop:
 						left = col - (width - 2)
 					}
 
-					a.views[0].SetTopLeft(top, left)
-					a.views[0].SetCursor(row, col)
+					a.views[a.currentView].SetTopLeft(top, left)
+					a.views[a.currentView].SetCursor(row, col)
 				}
 			} else if ev.Key() == tcell.KeyBackspace || ev.Key() == tcell.KeyBackspace2 {
 				if len(a.views) > 0 {
-					a.views[0].DeleteRune(false)
+					a.views[a.currentView].DeleteRune(false)
 
 					width, height := screen.Size()
-					top, left := a.views[0].TopLeft()
-					row, col := a.views[0].Cursor()
+					top, left := a.views[a.currentView].TopLeft()
+					row, col := a.views[a.currentView].Cursor()
 
 					if row < top {
 						top = row
@@ -201,15 +201,15 @@ eventLoop:
 						left = col - (width - 2)
 					}
 
-					a.views[0].SetTopLeft(top, left)
+					a.views[a.currentView].SetTopLeft(top, left)
 				}
 			} else if ev.Key() == tcell.KeyDelete {
 				if len(a.views) > 0 {
-					a.views[0].DeleteRune(true)
+					a.views[a.currentView].DeleteRune(true)
 
 					width, height := screen.Size()
-					top, left := a.views[0].TopLeft()
-					row, col := a.views[0].Cursor()
+					top, left := a.views[a.currentView].TopLeft()
+					row, col := a.views[a.currentView].Cursor()
 
 					if row < top {
 						top = row
@@ -223,15 +223,15 @@ eventLoop:
 						left = col - (width - 2)
 					}
 
-					a.views[0].SetTopLeft(top, left)
+					a.views[a.currentView].SetTopLeft(top, left)
 				}
 			} else if ev.Key() == tcell.KeyRune {
 				if len(a.views) > 0 {
-					a.views[0].InsertRune(ev.Rune())
+					a.views[a.currentView].InsertRune(ev.Rune())
 
 					width, height := screen.Size()
-					top, left := a.views[0].TopLeft()
-					row, col := a.views[0].Cursor()
+					top, left := a.views[a.currentView].TopLeft()
+					row, col := a.views[a.currentView].Cursor()
 
 					if row < top {
 						top = row
@@ -245,13 +245,13 @@ eventLoop:
 						left = col - (width - 2)
 					}
 
-					a.views[0].SetTopLeft(top, left)
+					a.views[a.currentView].SetTopLeft(top, left)
 				}
 			} else if ev.Key() == tcell.KeyPgUp || ev.Key() == tcell.KeyPgDn {
 				if len(a.views) > 0 {
 					_, height := screen.Size()
-					top, left := a.views[0].TopLeft()
-					row, col := a.views[0].Cursor()
+					top, left := a.views[a.currentView].TopLeft()
+					row, col := a.views[a.currentView].Cursor()
 					page := height - 1
 					if ev.Key() == tcell.KeyPgUp {
 						top = max(0, top-page)
@@ -260,8 +260,8 @@ eventLoop:
 						top = top + page
 						row = row + page
 					}
-					a.views[0].SetTopLeft(top, left)
-					a.views[0].SetCursor(row, col)
+					a.views[a.currentView].SetTopLeft(top, left)
+					a.views[a.currentView].SetCursor(row, col)
 				}
 			}
 		case *tcell.EventMouse:
@@ -269,21 +269,21 @@ eventLoop:
 
 			switch ev.Buttons() {
 			case tcell.Button1:
-				top, left := a.views[0].TopLeft()
-				a.views[0].SetCursor(top+y, left+x)
+				top, left := a.views[a.currentView].TopLeft()
+				a.views[a.currentView].SetCursor(top+y, left+x)
 			case tcell.WheelUp:
-				top, left := a.views[0].TopLeft()
-				a.views[0].SetTopLeft(max(0, top-1), left)
+				top, left := a.views[a.currentView].TopLeft()
+				a.views[a.currentView].SetTopLeft(max(0, top-1), left)
 			case tcell.WheelDown:
-				top, left := a.views[0].TopLeft()
-				a.views[0].SetTopLeft(top+1, left)
+				top, left := a.views[a.currentView].TopLeft()
+				a.views[a.currentView].SetTopLeft(top+1, left)
 			}
 		}
 
 		screen.Clear()
-		drawView(a.views[0], screen)
+		drawView(a.views[a.currentView], screen)
 		if a.statusBar != nil {
-			a.statusBar.Draw(screen, a.views[0])
+			a.statusBar.Draw(screen, a.views[a.currentView])
 		}
 	}
 }
