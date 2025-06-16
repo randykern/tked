@@ -138,6 +138,14 @@ func (a *app) Run(screen tcell.Screen) {
 				return
 			} else if ev.Key() == tcell.KeyCtrlL {
 				screen.Sync()
+			} else if ev.Key() == tcell.KeyCtrlZ {
+				if len(a.views) > 0 {
+					a.views[0].Undo()
+				}
+			} else if ev.Key() == tcell.KeyCtrlR {
+				if len(a.views) > 0 {
+					a.views[0].Redo()
+				}
 			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
 				screen.Clear()
 			} else if ev.Key() == tcell.KeyUp || ev.Key() == tcell.KeyDown || ev.Key() == tcell.KeyLeft || ev.Key() == tcell.KeyRight {
