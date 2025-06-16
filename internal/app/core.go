@@ -138,6 +138,15 @@ eventLoop:
 						// TODO: handle error properly (status bar?)
 					}
 				}
+			} else if ev.Key() == tcell.KeyCtrlO {
+				if a.statusBar != nil {
+					filename, ok := a.statusBar.Input(screen, "Open file: ")
+					if ok && filename != "" {
+						if err := a.OpenFile(filename); err != nil {
+							// TODO: handle error properly (status bar?)
+						}
+					}
+				}
 			} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
 				screen.Clear()
 			} else if ev.Key() == tcell.KeyUp || ev.Key() == tcell.KeyDown || ev.Key() == tcell.KeyLeft || ev.Key() == tcell.KeyRight {
