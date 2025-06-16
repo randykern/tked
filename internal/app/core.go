@@ -1,8 +1,6 @@
 package app
 
 import (
-	"fmt"
-
 	"github.com/gdamore/tcell/v2"
 )
 
@@ -12,8 +10,9 @@ type App interface {
 }
 
 type app struct {
-	buffers []Buffer
-	views   []View
+	buffers   []Buffer
+	views     []View
+	statusBar StatusBar
 }
 
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
@@ -30,24 +29,6 @@ func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string
 			break
 		}
 	}
-}
-
-func drawStatusBar(a *app, s tcell.Screen) {
-	filename := "Untitled"
-	cursor := ": 1 1"
-	if len(a.views) > 0 {
-		filename = a.views[0].Buffer().GetFilename()
-		if filename == "" {
-			filename = "Untitled"
-		}
-
-		cursorRow, cursorCol := a.views[0].Cursor()
-		cursor = fmt.Sprintf(": %d %d", cursorRow+1, cursorCol+1)
-	}
-
-	width, height := s.Size()
-	drawText(s, 0, height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), filename)
-	drawText(s, len(filename), height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), cursor)
 }
 
 func drawView(v View, s tcell.Screen) {
@@ -114,7 +95,9 @@ func (a *app) Run(screen tcell.Screen) {
 	screen.Clear()
 
 	// Draw initial status bar
-	drawStatusBar(a, screen)
+	if a.statusBar != nil {
+		a.statusBar.Draw(screen)
+	}
 
 	// Draw initial buffer
 	if len(a.views) > 0 {
@@ -296,7 +279,9 @@ func (a *app) Run(screen tcell.Screen) {
 
 		screen.Clear()
 		drawView(a.views[0], screen)
-		drawStatusBar(a, screen)
+		if a.statusBar != nil {
+			a.statusBar.Draw(screen)
+		}
 	}
 }
 
@@ -325,8 +310,10 @@ func New() (App, error) {
 		return nil, err
 	}
 
-	return &app{
+	a := &app{
 		buffers: []Buffer{buffer},
 		views:   []View{NewView(buffer)},
-	}, nil
+	}
+	a.statusBar = NewStatusBar(a)
+	return a, nil
 }
