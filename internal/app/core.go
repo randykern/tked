@@ -181,6 +181,18 @@ func (a *app) Run(screen tcell.Screen) {
 					a.views[0].SetTopLeft(top, left)
 					a.views[0].SetCursor(row, col)
 				}
+			} else if ev.Key() == tcell.KeyPgUp || ev.Key() == tcell.KeyPgDn {
+				if len(a.views) > 0 {
+					_, height := screen.Size()
+					top, left := a.views[0].TopLeft()
+					page := height - 1
+					if ev.Key() == tcell.KeyPgUp {
+						top = max(0, top-page)
+					} else {
+						top = top + page
+					}
+					a.views[0].SetTopLeft(top, left)
+				}
 			}
 		case *tcell.EventMouse:
 			x, y := ev.Position()
@@ -189,6 +201,12 @@ func (a *app) Run(screen tcell.Screen) {
 			case tcell.Button1:
 				top, left := a.views[0].TopLeft()
 				a.views[0].SetCursor(top+y, left+x)
+			case tcell.WheelUp:
+				top, left := a.views[0].TopLeft()
+				a.views[0].SetTopLeft(max(0, top-1), left)
+			case tcell.WheelDown:
+				top, left := a.views[0].TopLeft()
+				a.views[0].SetTopLeft(top+1, left)
 			}
 		}
 
