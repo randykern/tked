@@ -6,9 +6,13 @@ import (
 )
 
 type Buffer interface {
+	// Returns the filename of the buffer.
 	GetFilename() string
+	// Returns the contents of the buffer.
 	Contents() rope.Rope
+	// Returns true if the buffer has been modified since it was last saved.
 	IsDirty() bool
+	// Returns a new Buffer with text inserted at the specified index.
 	// Insert returns a new Buffer with text inserted at the specified index.
 	Insert(idx int, text string) Buffer
 }
