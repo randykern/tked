@@ -15,6 +15,10 @@ type View interface {
 	SetCursor(row, col int)
 	// InsertRune inserts a rune into the buffer at the cursor position.
 	InsertRune(r rune)
+	// DeleteRune deletes a rune. When forward is true it deletes the rune
+	// under the cursor (Delete key behaviour). Otherwise it deletes the
+	// rune before the cursor (Backspace behaviour).
+	DeleteRune(forward bool)
 	// Undo reverts the last editing action.
 	Undo()
 	// Redo reapplies an undone editing action.
@@ -136,6 +140,74 @@ func (v *view) Redo() {
 	if v.curr > 0 {
 		v.curr--
 	}
+}
+
+func (v *view) DeleteRune(forward bool) {
+	if len(v.states) == 0 {
+		return
+	}
+
+	curr := v.states[0]
+	idx := bufferIndexAt(curr.buffer.Contents(), curr.cursorRow, curr.cursorCol)
+
+	start := idx
+	end := idx
+	var ch byte
+	var ok bool
+	newRow := curr.cursorRow
+	newCol := curr.cursorCol
+
+	if forward {
+		ch, ok = curr.buffer.Contents().Index(idx)
+		if !ok {
+			return
+		}
+		start = idx
+		end = idx + 1
+	} else {
+		if idx == 0 {
+			return
+		}
+		ch, _ = curr.buffer.Contents().Index(idx - 1)
+		start = idx - 1
+		end = idx
+		if ch == '\n' {
+			newRow--
+			colCount := 0
+			scanIdx := start - 1
+			for scanIdx >= 0 {
+				b, ok := curr.buffer.Contents().Index(scanIdx)
+				if !ok {
+					break
+				}
+				if b == '\n' {
+					break
+				}
+				colCount++
+				scanIdx--
+			}
+			newCol = colCount
+		} else {
+			newCol--
+		}
+		if newRow < 0 {
+			newRow = 0
+		}
+		if newCol < 0 {
+			newCol = 0
+		}
+	}
+
+	newBuf := curr.buffer.Delete(start, end)
+
+	newState := viewState{
+		buffer:    newBuf,
+		top:       curr.top,
+		left:      curr.left,
+		cursorRow: newRow,
+		cursorCol: newCol,
+	}
+	v.states = append([]viewState{newState}, v.states...)
 }
 
 func NewView(buffer Buffer) View {

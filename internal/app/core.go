@@ -189,6 +189,50 @@ func (a *app) Run(screen tcell.Screen) {
 					a.views[0].SetTopLeft(top, left)
 					a.views[0].SetCursor(row, col)
 				}
+			} else if ev.Key() == tcell.KeyBackspace || ev.Key() == tcell.KeyBackspace2 {
+				if len(a.views) > 0 {
+					a.views[0].DeleteRune(false)
+
+					width, height := screen.Size()
+					top, left := a.views[0].TopLeft()
+					row, col := a.views[0].Cursor()
+
+					if row < top {
+						top = row
+					} else if row >= top+height-1 {
+						top = row - height + 2
+					}
+
+					if col < left {
+						left = col
+					} else if col >= left+width-1 {
+						left = col - (width - 2)
+					}
+
+					a.views[0].SetTopLeft(top, left)
+				}
+			} else if ev.Key() == tcell.KeyDelete {
+				if len(a.views) > 0 {
+					a.views[0].DeleteRune(true)
+
+					width, height := screen.Size()
+					top, left := a.views[0].TopLeft()
+					row, col := a.views[0].Cursor()
+
+					if row < top {
+						top = row
+					} else if row >= top+height-1 {
+						top = row - height + 2
+					}
+
+					if col < left {
+						left = col
+					} else if col >= left+width-1 {
+						left = col - (width - 2)
+					}
+
+					a.views[0].SetTopLeft(top, left)
+				}
 			} else if ev.Key() == tcell.KeyRune {
 				if len(a.views) > 0 {
 					a.views[0].InsertRune(ev.Rune())
