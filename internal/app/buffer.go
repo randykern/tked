@@ -32,9 +32,6 @@ func (b *buffer) IsDirty() bool {
 }
 
 func (b *buffer) Insert(idx int, text string) Buffer {
-	if b == nil {
-		return nil
-	}
 	if idx < 0 {
 		idx = 0
 	}
