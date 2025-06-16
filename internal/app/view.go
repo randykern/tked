@@ -15,6 +15,10 @@ type View interface {
 	SetCursor(row, col int)
 	// InsertRune inserts a rune into the buffer at the cursor position.
 	InsertRune(r rune)
+	// Undo reverts the last editing action.
+	Undo()
+	// Redo reapplies an undone editing action.
+	Redo()
 }
 
 type viewState struct {
@@ -27,20 +31,21 @@ type viewState struct {
 
 type view struct {
 	states []viewState
+	curr   int
 }
 
 func (v *view) Buffer() Buffer {
 	if len(v.states) == 0 {
 		return nil
 	}
-	return v.states[0].buffer
+	return v.states[v.curr].buffer
 }
 
 func (v *view) TopLeft() (int, int) {
 	if len(v.states) == 0 {
 		return 0, 0
 	}
-	s := v.states[0]
+	s := v.states[v.curr]
 	return s.top, s.left
 }
 
@@ -48,7 +53,7 @@ func (v *view) SetTopLeft(top, left int) {
 	if len(v.states) == 0 {
 		return
 	}
-	s := &v.states[0]
+	s := &v.states[v.curr]
 	s.top = max(0, top)
 	s.left = max(0, left)
 }
@@ -57,7 +62,7 @@ func (v *view) Cursor() (int, int) {
 	if len(v.states) == 0 {
 		return 0, 0
 	}
-	s := v.states[0]
+	s := v.states[v.curr]
 	return s.cursorRow, s.cursorCol
 }
 
@@ -65,7 +70,7 @@ func (v *view) SetCursor(row, col int) {
 	if len(v.states) == 0 {
 		return
 	}
-	s := &v.states[0]
+	s := &v.states[v.curr]
 	s.cursorRow = max(0, row)
 	s.cursorCol = max(0, col)
 }
@@ -97,7 +102,7 @@ func (v *view) InsertRune(r rune) {
 		return
 	}
 
-	curr := v.states[0]
+	curr := v.states[v.curr]
 	idx := bufferIndexAt(curr.buffer.Contents(), curr.cursorRow, curr.cursorCol)
 	newBuf := curr.buffer.Insert(idx, string(r))
 
@@ -117,7 +122,20 @@ func (v *view) InsertRune(r rune) {
 		cursorRow: newRow,
 		cursorCol: newCol,
 	}
-	v.states = append([]viewState{newState}, v.states...)
+	v.states = append([]viewState{newState}, v.states[v.curr:]...)
+	v.curr = 0
+}
+
+func (v *view) Undo() {
+	if v.curr+1 < len(v.states) {
+		v.curr++
+	}
+}
+
+func (v *view) Redo() {
+	if v.curr > 0 {
+		v.curr--
+	}
 }
 
 func NewView(buffer Buffer) View {
@@ -131,5 +149,6 @@ func NewView(buffer Buffer) View {
 				cursorCol: 0,
 			},
 		},
+		curr: 0,
 	}
 }
