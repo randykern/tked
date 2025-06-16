@@ -16,13 +16,6 @@ type app struct {
 	views   []View
 }
 
-func New() App {
-	return &app{
-		buffers: []Buffer{},
-		views:   []View{},
-	}
-}
-
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
 	row := y1
 	col := x1
@@ -77,19 +70,23 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string)
 
 func drawStatusBar(a *app, s tcell.Screen) {
 	filename := "Untitled"
+	cursor := ": 1 1"
 	if len(a.views) > 0 {
 		filename = a.views[0].Buffer().GetFilename()
+		if filename == "" {
+			filename = "Untitled"
+		}
+
+		cursorRow, cursorCol := a.views[0].Cursor()
+		cursor = fmt.Sprintf(": %d %d", cursorRow+1, cursorCol+1)
 	}
 
 	width, height := s.Size()
-	cursorRow, cursorCol := a.views[0].Cursor()
 	drawText(s, 0, height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), filename)
-	drawText(s, len(filename), height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), fmt.Sprintf(": %d %d", cursorRow, cursorCol))
+	drawText(s, len(filename), height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), cursor)
 }
 
 func drawView(v View, s tcell.Screen) {
-	// TODO: Erase the viewport?
-
 	screenWidth, screenHeight := s.Size()
 
 	index := 0
@@ -118,7 +115,13 @@ func drawView(v View, s tcell.Screen) {
 			continue
 		} else if r == '\t' {
 			// TODO: Tab width option
-			bufferCol += 4
+			// TODO: This doesn't work quite right. See line 8 of the sample text file.
+			tabWidth := 4
+			if bufferCol%tabWidth == 0 {
+				bufferCol += tabWidth
+			} else {
+				bufferCol += tabWidth - bufferCol%4
+			}
 			continue
 		}
 
@@ -189,18 +192,40 @@ func (a *app) Run(screen tcell.Screen) {
 					row, col := a.views[0].Cursor()
 					switch ev.Key() {
 					case tcell.KeyUp:
-						if row > 0 {
-							row--
-						}
+						row--
 					case tcell.KeyDown:
 						row++
 					case tcell.KeyLeft:
-						if col > 0 {
-							col--
-						}
+						col--
 					case tcell.KeyRight:
 						col++
 					}
+
+					// Make sure we don't move the cursor before the start of the file
+					row = max(0, row)
+					col = max(0, col)
+
+					// TODO: Moving the cursor past the end?
+
+					// Adjust viewport if cursor moved outside visible area
+					width, height := screen.Size()
+					top, left := a.views[0].TopLeft()
+
+					if row < top {
+						// Moved out the top of the viewport- make the new top row the cursor row
+						top = row
+					} else if row >= top+height-1 {
+						// Moved out the bottom of the viewport- make the new bottom row the cursor row
+						top = row - height + 2
+					}
+
+					if col < left {
+						left = col
+					} else if col >= left+width-1 {
+						left = col - (width - 2)
+					}
+
+					a.views[0].SetTopLeft(top, left)
 					a.views[0].SetCursor(row, col)
 				}
 			}
@@ -239,5 +264,22 @@ func (a *app) OpenFile(filename string) error {
 	view := NewView(buffer)
 	a.views = append(a.views, view)
 
+	if a.buffers[0].GetFilename() == "" && !a.buffers[0].IsDirty() {
+		a.buffers = a.buffers[1:]
+		a.views = a.views[1:]
+	}
+
 	return nil
+}
+
+func New() (App, error) {
+	buffer, err := NewBuffer("")
+	if err != nil {
+		return nil, err
+	}
+
+	return &app{
+		buffers: []Buffer{buffer},
+		views:   []View{NewView(buffer)},
+	}, nil
 }

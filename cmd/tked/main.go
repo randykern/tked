@@ -12,12 +12,18 @@ import (
 func main() {
 	flag.Parse()
 
-	app := app.New()
+	app, err := app.New()
+	if err != nil {
+		log.Fatalf("Failed to create app: %v", err)
+	}
 
 	// Is there a file to open?
 	if flag.NArg() > 0 {
 		filename := flag.Arg(0)
-		app.OpenFile(filename)
+		err = app.OpenFile(filename)
+		if err != nil {
+			log.Fatalf("Failed to open file: %v", err)
+		}
 	}
 
 	screen, err := tcell.NewScreen()
