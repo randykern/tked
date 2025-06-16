@@ -15,6 +15,15 @@ type app struct {
 	currentView int
 }
 
+func (a *app) scrollBy(lines int) {
+	if len(a.views) == 0 {
+		return
+	}
+
+	top, left := a.views[a.currentView].TopLeft()
+	a.views[a.currentView].SetTopLeft(max(0, top+lines), left)
+}
+
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
 	row := y1
 	col := x1
@@ -250,17 +259,15 @@ eventLoop:
 			} else if ev.Key() == tcell.KeyPgUp || ev.Key() == tcell.KeyPgDn {
 				if len(a.views) > 0 {
 					_, height := screen.Size()
-					top, left := a.views[0].TopLeft()
 					row, col := a.views[0].Cursor()
 					page := height - 1
 					if ev.Key() == tcell.KeyPgUp {
-						top = max(0, top-page)
+						a.scrollBy(-page)
 						row = max(0, row-page)
 					} else {
-						top = top + page
+						a.scrollBy(page)
 						row = row + page
 					}
-					a.views[0].SetTopLeft(top, left)
 					a.views[0].SetCursor(row, col)
 				}
 			}
@@ -272,11 +279,9 @@ eventLoop:
 				top, left := a.views[0].TopLeft()
 				a.views[0].SetCursor(top+y, left+x)
 			case tcell.WheelUp:
-				top, left := a.views[0].TopLeft()
-				a.views[0].SetTopLeft(max(0, top-1), left)
+				a.scrollBy(-1)
 			case tcell.WheelDown:
-				top, left := a.views[0].TopLeft()
-				a.views[0].SetTopLeft(top+1, left)
+				a.scrollBy(1)
 			}
 		}
 
