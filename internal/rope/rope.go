@@ -2,6 +2,22 @@ package rope
 
 import "io"
 
+// Rope describes the operations supported by a rope implementation.
+type Rope interface {
+	// Len returns the number of bytes stored in the rope.
+	Len() int
+	// Split splits the rope at the provided index and returns two new ropes.
+	Split(idx int) (Rope, Rope)
+	// Insert returns a new rope with s inserted at idx.
+	Insert(idx int, s string) Rope
+	// Delete returns a new rope with the range [start,end) removed.
+	Delete(start, end int) Rope
+	// String returns the contents of the rope as a string.
+	String() string
+	// Index returns the byte at position idx. ok will be false if idx is out of range.
+	Index(idx int) (byte, bool)
+}
+
 // Node represents a node in the rope tree. A node is either an internal
 // node with left/right children, or a leaf node that holds a substring.
 type Node struct {
@@ -65,22 +81,6 @@ func splitNode(n *Node, idx int) (*Node, *Node) {
 	return n.left, n.right
 }
 
-// Rope describes the operations supported by a rope implementation.
-type Rope interface {
-	// Len returns the number of bytes stored in the rope.
-	Len() int
-	// Split splits the rope at the provided index and returns two new ropes.
-	Split(idx int) (Rope, Rope)
-	// Insert returns a new rope with s inserted at idx.
-	Insert(idx int, s string) Rope
-	// Delete returns a new rope with the range [start,end) removed.
-	Delete(start, end int) Rope
-	// String returns the contents of the rope as a string.
-	String() string
-	// Index returns the byte at position idx. ok will be false if idx is out of range.
-	Index(idx int) (byte, bool)
-}
-
 // binaryRope is a binary rope structure for efficiently storing and editing large
 // strings. It implements the Rope interface.
 type binaryRope struct {
@@ -88,21 +88,23 @@ type binaryRope struct {
 }
 
 // New creates a new Rope containing the provided string.
-func New(s string) Rope {
+func NewRope(s string) Rope {
 	return &binaryRope{root: leaf(s)}
 }
 
 // Read consumes all data from r and returns a new Rope containing it.
 // Any error encountered while reading is returned.
-func Read(r io.Reader) (Rope, error) {
+func NewFromReader(r io.Reader) (Rope, error) {
 	if r == nil {
 		return &binaryRope{}, nil
 	}
+	// TODO: This may waste a lot of memory
 	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
-	return New(string(data)), nil
+
+	return NewRope(string(data)), nil
 }
 
 // Write writes the contents of rp to w. It returns the number of bytes written
@@ -147,7 +149,7 @@ func (r *binaryRope) Split(idx int) (Rope, Rope) {
 // Insert returns a new rope with s inserted at idx.
 func (r *binaryRope) Insert(idx int, s string) Rope {
 	left, right := r.Split(idx)
-	return Concat(Concat(left, New(s)), right)
+	return Concat(Concat(left, NewRope(s)), right)
 }
 
 // Delete returns a new rope with the range [start,end) removed.

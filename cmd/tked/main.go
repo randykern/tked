@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 
 	"github.com/gdamore/tcell/v2"
@@ -9,6 +10,16 @@ import (
 )
 
 func main() {
+	flag.Parse()
+
+	app := app.New()
+
+	// Is there a file to open?
+	if flag.NArg() > 0 {
+		filename := flag.Arg(0)
+		app.OpenFile(filename)
+	}
+
 	screen, err := tcell.NewScreen()
 	if err != nil {
 		log.Fatalf("Failed to create screen: %v", err)
@@ -30,6 +41,5 @@ func main() {
 	}
 	defer quit()
 
-	app := app.New()
 	app.Run(screen)
 }

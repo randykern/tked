@@ -7,18 +7,20 @@ import (
 )
 
 type App interface {
+	OpenFile(filename string) error
 	Run(screen tcell.Screen)
 }
 
 type app struct {
-	/*
-		buffers []Buffer,
-		views []View,
-	*/
+	buffers []Buffer
+	views   []View
 }
 
 func New() App {
-	return &app{}
+	return &app{
+		buffers: []Buffer{},
+		views:   []View{},
+	}
 }
 
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
@@ -74,8 +76,56 @@ func drawBox(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string)
 }
 
 func drawStatusBar(a *app, s tcell.Screen) {
+	filename := "Untitled"
+	if len(a.views) > 0 {
+		filename = a.views[0].Buffer().GetFilename()
+	}
+
 	width, height := s.Size()
-	drawText(s, 0, height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), "Status bar")
+	drawText(s, 0, height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), filename)
+}
+
+func drawView(v View, s tcell.Screen) {
+	// TODO: Erase the viewport?
+
+	screenWidth, screenHeight := s.Size()
+
+	index := 0
+
+	viewTop, viewLeft := v.TopLeft()
+
+	bufferRow := 0
+	bufferCol := 0
+
+	// TODO: MB characeter sets
+
+	for {
+		r, ok := v.Buffer().Contents().Index(index)
+		if !ok {
+			break
+		}
+		index++
+
+		// Instead of special logic for text that shouldn't be drawn, we will always just move forward
+		// a character at a time, but suppress the drawing of the character if it is outside
+		// the viewport.
+
+		if r == '\n' {
+			bufferRow++
+			bufferCol = 0
+			continue
+		} else if r == '\t' {
+			// TODO: Tab width option
+			bufferCol += 4
+			continue
+		}
+
+		if bufferRow >= viewTop && bufferCol >= viewLeft && bufferRow < viewTop+screenHeight-1 && bufferCol < viewLeft+screenWidth-1 {
+			s.SetContent(bufferCol-viewLeft, bufferRow-viewTop, rune(r), nil, tcell.StyleDefault)
+		}
+
+		bufferCol++
+	}
 }
 
 func (a *app) Run(screen tcell.Screen) {
@@ -88,12 +138,13 @@ func (a *app) Run(screen tcell.Screen) {
 	screen.EnablePaste()
 	screen.Clear()
 
-	// Draw initial boxes
-	drawBox(screen, 1, 1, 42, 7, boxStyle, "Click and drag to draw a box")
-	drawBox(screen, 5, 9, 32, 14, boxStyle, "Press C to reset")
-
 	// Draw initial status bar
 	drawStatusBar(a, screen)
+
+	// Draw initial buffer
+	if len(a.views) > 0 {
+		drawView(a.views[0], screen)
+	}
 
 	// Here's how to get the screen size when you need it.
 	// xmax, ymax := s.Size()
@@ -145,4 +196,18 @@ func (a *app) Run(screen tcell.Screen) {
 			drawStatusBar(a, screen)
 		}
 	}
+}
+
+func (a *app) OpenFile(filename string) error {
+	buffer, err := NewBuffer(filename)
+	if err != nil {
+		return err
+	}
+
+	a.buffers = append(a.buffers, buffer)
+
+	view := NewView(buffer)
+	a.views = append(a.views, view)
+
+	return nil
 }
