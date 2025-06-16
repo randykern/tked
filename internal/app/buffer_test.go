@@ -1,6 +1,9 @@
 package app
 
-import "testing"
+import (
+	"os"
+	"testing"
+)
 
 func TestBufferDelete(t *testing.T) {
 	b, err := NewBuffer("")
@@ -49,5 +52,33 @@ func TestBufferInsert(t *testing.T) {
 	b5 := b3.Insert(-10, "start ")
 	if got := b5.Contents().String(); got != "start hello world" {
 		t.Fatalf("expected %q got %q", "start hello world", got)
+	}
+}
+
+func TestBufferSave(t *testing.T) {
+	f, err := os.CreateTemp("", "tked_test_*.txt")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer os.Remove(f.Name())
+	f.Close()
+
+	b, err := NewBuffer(f.Name())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	b = b.Insert(0, "hello")
+	if err := b.Save(); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	data, err := os.ReadFile(f.Name())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if string(data) != "hello" {
+		t.Fatalf("expected file contents %q got %q", "hello", string(data))
+	}
+	if b.IsDirty() {
+		t.Fatalf("expected buffer to be clean after save")
 	}
 }

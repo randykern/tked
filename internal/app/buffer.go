@@ -2,6 +2,8 @@ package app
 
 import (
 	"os"
+	"path/filepath"
+
 	"tked/internal/rope"
 )
 
@@ -17,12 +19,50 @@ type Buffer interface {
 	Insert(idx int, text string) Buffer
 	// Delete returns a new Buffer with the specified range removed.
 	Delete(start, end int) Buffer
+	// Save writes the buffer contents to disk using the filename. It returns
+	// an error if the write fails or no filename was specified.
+	Save() error
 }
 
 type buffer struct {
 	filename string
 	contents rope.Rope
 	dirty    bool
+}
+
+func (b *buffer) Save() error {
+	if b.filename == "" {
+		return os.ErrInvalid
+	}
+
+	dir, name := filepath.Split(b.filename)
+	// Create a temporary file in the same directory so that os.Rename works
+	// across filesystems.
+	tmp, err := os.CreateTemp(dir, name+".tmp*")
+	if err != nil {
+		return err
+	}
+
+	// Write contents to the temporary file first.
+	if _, err := rope.Write(tmp, b.contents); err != nil {
+		tmp.Close()
+		os.Remove(tmp.Name())
+		return err
+	}
+
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+
+	// Atomically replace the target file.
+	if err := os.Rename(tmp.Name(), b.filename); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+
+	b.dirty = false
+	return nil
 }
 
 func (b *buffer) GetFilename() string {
