@@ -185,13 +185,17 @@ func (a *app) Run(screen tcell.Screen) {
 				if len(a.views) > 0 {
 					_, height := screen.Size()
 					top, left := a.views[0].TopLeft()
+					row, col := a.views[0].Cursor()
 					page := height - 1
 					if ev.Key() == tcell.KeyPgUp {
 						top = max(0, top-page)
+						row = max(0, row-page)
 					} else {
 						top = top + page
+						row = row + page
 					}
 					a.views[0].SetTopLeft(top, left)
+					a.views[0].SetCursor(row, col)
 				}
 			}
 		case *tcell.EventMouse:
