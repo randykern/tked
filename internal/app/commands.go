@@ -6,7 +6,7 @@ type CommandExit struct{}
 
 func (c *CommandExit) Name() string { return "exit" }
 
-func (c *CommandExit) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+func (c *CommandExit) Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
 	return true, nil
 }
 
@@ -14,7 +14,7 @@ type CommandUndo struct{}
 
 func (c *CommandUndo) Name() string { return "undo" }
 
-func (c *CommandUndo) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+func (c *CommandUndo) Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
 	if view != nil {
 		view.Undo()
 	}
@@ -25,7 +25,7 @@ type CommandRedo struct{}
 
 func (c *CommandRedo) Name() string { return "redo" }
 
-func (c *CommandRedo) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+func (c *CommandRedo) Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
 	if view != nil {
 		view.Redo()
 	}
@@ -36,12 +36,27 @@ type CommandSave struct{}
 
 func (c *CommandSave) Name() string { return "save" }
 
-func (c *CommandSave) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+func (c *CommandSave) Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
 	if view != nil {
 		if err := view.Buffer().Save(); err != nil {
 			return false, err
 		}
 	}
+	return false, nil
+}
+
+type CommandOpen struct{}
+
+func (c *CommandOpen) Name() string { return "open" }
+
+func (c *CommandOpen) Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+	filename, ok := app.GetStatusBar().Input(screen, "Open file: ")
+	if ok && filename != "" {
+		if err := app.OpenFile(filename); err != nil {
+			app.GetStatusBar().Errorf(screen, "Error opening file: %v", err)
+		}
+	}
+
 	return false, nil
 }
 
@@ -64,7 +79,7 @@ func (c *CommandMove) Name() string {
 	return "move"
 }
 
-func (c *CommandMove) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+func (c *CommandMove) Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
 	if view == nil {
 		return false, nil
 	}
@@ -82,7 +97,7 @@ type CommandBackspace struct{}
 
 func (c *CommandBackspace) Name() string { return "backspace" }
 
-func (c *CommandBackspace) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+func (c *CommandBackspace) Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
 	if view != nil {
 		view.DeleteRune(false)
 		adjustViewport(view, screen)
@@ -94,21 +109,9 @@ type CommandDelete struct{}
 
 func (c *CommandDelete) Name() string { return "delete" }
 
-func (c *CommandDelete) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+func (c *CommandDelete) Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
 	if view != nil {
 		view.DeleteRune(true)
-		adjustViewport(view, screen)
-	}
-	return false, nil
-}
-
-type CommandInsertRune struct{}
-
-func (c *CommandInsertRune) Name() string { return "rune" }
-
-func (c *CommandInsertRune) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
-	if view != nil {
-		view.InsertRune(ev.Rune())
 		adjustViewport(view, screen)
 	}
 	return false, nil
@@ -118,7 +121,7 @@ type CommandPageUp struct{}
 
 func (c *CommandPageUp) Name() string { return "pageup" }
 
-func (c *CommandPageUp) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+func (c *CommandPageUp) Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
 	if view == nil {
 		return false, nil
 	}
@@ -135,7 +138,7 @@ type CommandPageDown struct{}
 
 func (c *CommandPageDown) Name() string { return "pagedown" }
 
-func (c *CommandPageDown) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+func (c *CommandPageDown) Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
 	if view == nil {
 		return false, nil
 	}
@@ -146,22 +149,6 @@ func (c *CommandPageDown) Execute(view View, screen tcell.Screen, ev *tcell.Even
 	row += page
 	view.SetCursor(row, col)
 	return false, nil
-}
-
-func RegisterCommands() {
-	RegisterCommand("exit", &CommandExit{})
-	RegisterCommand("undo", &CommandUndo{})
-	RegisterCommand("redo", &CommandRedo{})
-	RegisterCommand("save", &CommandSave{})
-	RegisterCommand("up", &CommandMove{dRow: -1})
-	RegisterCommand("down", &CommandMove{dRow: 1})
-	RegisterCommand("left", &CommandMove{dCol: -1})
-	RegisterCommand("right", &CommandMove{dCol: 1})
-	RegisterCommand("backspace", &CommandBackspace{})
-	RegisterCommand("delete", &CommandDelete{})
-	RegisterCommand("pageup", &CommandPageUp{})
-	RegisterCommand("pagedown", &CommandPageDown{})
-	RegisterCommand("rune", &CommandInsertRune{})
 }
 
 func scrollBy(view View, lines int) {
@@ -188,4 +175,20 @@ func adjustViewport(view View, screen tcell.Screen) {
 	}
 
 	view.SetTopLeft(top, left)
+}
+
+func RegisterCommands() {
+	RegisterCommand("exit", &CommandExit{})
+	RegisterCommand("undo", &CommandUndo{})
+	RegisterCommand("redo", &CommandRedo{})
+	RegisterCommand("save", &CommandSave{})
+	RegisterCommand("open", &CommandOpen{})
+	RegisterCommand("up", &CommandMove{dRow: -1})
+	RegisterCommand("down", &CommandMove{dRow: 1})
+	RegisterCommand("left", &CommandMove{dCol: -1})
+	RegisterCommand("right", &CommandMove{dCol: 1})
+	RegisterCommand("backspace", &CommandBackspace{})
+	RegisterCommand("delete", &CommandDelete{})
+	RegisterCommand("pageup", &CommandPageUp{})
+	RegisterCommand("pagedown", &CommandPageDown{})
 }

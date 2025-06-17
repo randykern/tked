@@ -11,6 +11,8 @@ type App interface {
 	Run(screen tcell.Screen)
 	// Settings returns the editor settings instance.
 	Settings() Settings
+	// GetStatusBar returns the status bar instance.
+	GetStatusBar() StatusBar
 }
 
 type app struct {
@@ -159,16 +161,24 @@ func (a *app) handleResize(screen tcell.Screen) {
 }
 
 func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
-	command := a.keyBindings.GetCommandForKey(ev.Key(), ev.Modifiers())
-	if command != nil {
-		ret, err := command.Execute(a.views[a.currentView], screen, ev)
-		if err != nil {
-			if a.statusBar != nil {
-				a.statusBar.Errorf(screen, "Error executing command: %v", err)
-			}
+	if ev.Key() == tcell.KeyRune {
+		if a.views[a.currentView] != nil {
+			a.views[a.currentView].InsertRune(ev.Rune())
+			adjustViewport(a.views[a.currentView], screen)
 		}
-		return ret
+	} else {
+		command := a.keyBindings.GetCommandForKey(ev.Key(), ev.Modifiers())
+		if command != nil {
+			ret, err := command.Execute(a, a.views[a.currentView], screen, ev)
+			if err != nil {
+				if a.statusBar != nil {
+					a.statusBar.Errorf(screen, "Error executing command: %v", err)
+				}
+			}
+			return ret
+		}
 	}
+
 	return false
 }
 
@@ -203,6 +213,10 @@ func (a *app) OpenFile(filename string) error {
 	}
 
 	return nil
+}
+
+func (a *app) GetStatusBar() StatusBar {
+	return a.statusBar
 }
 
 func NewApp() (App, error) {
