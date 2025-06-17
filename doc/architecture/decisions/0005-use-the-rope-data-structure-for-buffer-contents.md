@@ -17,4 +17,6 @@ We will use rope data structures for the underlying character data in the text e
 
 ## Consequences
 
-Not clear yet.
+Ropes make insertions and deletions efficient even for large files, enabling
+undo/redo functionality without excessive memory use. The downside is slightly
+more complex code when manipulating the buffer directly.

@@ -17,4 +17,6 @@ the View interface in the app module, and the controller is represented by the A
 
 ## Consequences
 
-Unclear at this point.
+Separating the editor into model, view and controller components keeps the code
+organized and testable. Each layer can evolve independently, though more
+interfaces must be maintained.
