@@ -19,21 +19,17 @@ This repo implements **tked**, a simple command line text editor written in Go. 
 - The editor uses the [Tcell](https://github.com/gdamore/tcell) package for terminal interactions.
 - Buffers store data using a rope data structure from `internal/rope`.
 - The max() function is a go built in function
+- buffer.go implements the buffer structure, which is the model
+- command.go provide the Comand interface and a RegisterCommand and GetCommand functions to interact with the command registry
+- commands.go implement all of the editor commands, like CommandExit, CommandUndo, etc
+- core.go implements the app structure, which has core application / controller logic
+- keybinding.go implements configurable keybindings to bind key events to Command implementations
+- settings.go implements editor configuration and settings
+- statusbar.go implements the status bar for the overall application
+- view.go implements the View interface and view structure, the view in the application architecture
 
 ## Testing and Formatting
 
 - Unit tests live in `*_test.go` files next to the code under test.
 - Run tests using `go test ./...` before committing.
 - Format code with `gofmt -w` on any changed Go files.
-
-## Keybindings
-
-The editor supports the following keybindings:
-
-- `Esc` – exit the editor
-- Arrow keys (`Up`/`Down`) – move the cursor
-- `Pgup` / `Pgdn` – page up/down
-- `Ctrl+Z` / `Ctrl+R` – undo/redo
-- `Ctrl+S` – save the current buffer
-- An asterisk (`*`) in the status line indicates unsaved changes.
-
