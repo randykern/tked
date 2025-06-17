@@ -16,6 +16,7 @@ func (d *dummyApp) OpenFile(name string) error { d.opened = name; return nil }
 func (d *dummyApp) Run(tcell.Screen)           {}
 func (d *dummyApp) Settings() Settings         { return NewSettings() }
 func (d *dummyApp) GetStatusBar() StatusBar    { return d.sb }
+func (d *dummyApp) LoadSettings(string) error  { return nil }
 
 type stubStatusBar struct{}
 

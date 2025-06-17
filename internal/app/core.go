@@ -13,6 +13,8 @@ type App interface {
 	Settings() Settings
 	// GetStatusBar returns the status bar instance.
 	GetStatusBar() StatusBar
+	// LoadSettings loads the settings from the given file.
+	LoadSettings(filename string) error
 }
 
 type app struct {
@@ -192,6 +194,16 @@ func (a *app) GetStatusBar() StatusBar {
 	}
 
 	return a.statusBar
+}
+
+func (a *app) LoadSettings(filename string) error {
+	settings, err := NewSettingsFromFile(filename)
+	if err != nil {
+		return err
+	}
+	a.settings = settings
+
+	return nil
 }
 
 func NewApp() (App, error) {

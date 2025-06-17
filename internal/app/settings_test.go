@@ -51,8 +51,7 @@ func TestSettingsLoadDuplicateBinding(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	s := NewSettings()
-	err = s.Load(tmp.Name())
+	_, err = NewSettingsFromFile(tmp.Name())
 	if err == nil {
 		t.Fatalf("expected error for duplicate binding, got nil")
 	}
