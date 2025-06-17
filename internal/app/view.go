@@ -147,7 +147,7 @@ func (v *view) DeleteRune(forward bool) {
 		return
 	}
 
-        curr := v.states[v.curr]
+	curr := v.states[v.curr]
 	idx := bufferIndexAt(curr.buffer.Contents(), curr.cursorRow, curr.cursorCol)
 
 	start := idx
@@ -158,7 +158,7 @@ func (v *view) DeleteRune(forward bool) {
 	newCol := curr.cursorCol
 
 	if forward {
-		ch, ok = curr.buffer.Contents().Index(idx)
+		_, ok = curr.buffer.Contents().Index(idx)
 		if !ok {
 			return
 		}
@@ -207,8 +207,8 @@ func (v *view) DeleteRune(forward bool) {
 		cursorRow: newRow,
 		cursorCol: newCol,
 	}
-        v.states = append([]viewState{newState}, v.states[v.curr:]...)
-        v.curr = 0
+	v.states = append([]viewState{newState}, v.states[v.curr:]...)
+	v.curr = 0
 }
 
 func NewView(buffer Buffer) View {
