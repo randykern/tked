@@ -23,32 +23,15 @@ type app struct {
 	keyBindings KeyBindings
 }
 
-func (a *app) scrollBy(lines int) {
-	if len(a.views) == 0 {
-		return
+func (a *app) getCurrentView() View {
+	if a.currentView < 0 || a.currentView >= len(a.views) || a.views[a.currentView] == nil {
+		panic("no active view") // this is a bug not an error!
 	}
 
-	top, left := a.views[a.currentView].TopLeft()
-	a.views[a.currentView].SetTopLeft(max(0, top+lines), left)
+	return a.views[a.currentView]
 }
 
 func (a *app) Settings() Settings { return a.settings }
-
-func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
-	row := y1
-	col := x1
-	for _, r := range text {
-		s.SetContent(col, row, r, nil, style)
-		col++
-		if col >= x2 {
-			row++
-			col = x1
-		}
-		if row > y2 {
-			break
-		}
-	}
-}
 
 func drawView(v View, s tcell.Screen, tabWidth int) {
 	screenWidth, screenHeight := s.Size()
@@ -114,18 +97,10 @@ func (a *app) Run(screen tcell.Screen) {
 	screen.Clear()
 
 	// Draw initial status bar
-	if a.statusBar != nil {
-		var view View
-		if len(a.views) > 0 {
-			view = a.views[a.currentView]
-		}
-		a.statusBar.Draw(screen, view)
-	}
+	a.statusBar.Draw(screen, a.getCurrentView())
 
 	// Draw initial view
-	if len(a.views) > 0 {
-		drawView(a.views[a.currentView], screen, a.settings.TabWidth())
-	}
+	drawView(a.getCurrentView(), screen, a.settings.TabWidth())
 
 	// Event loop
 eventLoop:
@@ -149,10 +124,8 @@ eventLoop:
 		}
 
 		screen.Clear()
-		drawView(a.views[a.currentView], screen, a.settings.TabWidth())
-		if a.statusBar != nil {
-			a.statusBar.Draw(screen, a.views[a.currentView])
-		}
+		drawView(a.getCurrentView(), screen, a.settings.TabWidth())
+		a.statusBar.Draw(screen, a.getCurrentView())
 	}
 }
 
@@ -162,18 +135,15 @@ func (a *app) handleResize(screen tcell.Screen) {
 
 func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
 	if ev.Key() == tcell.KeyRune {
-		if a.views[a.currentView] != nil {
-			a.views[a.currentView].InsertRune(ev.Rune())
-			adjustViewport(a.views[a.currentView], screen)
-		}
+		view := a.getCurrentView()
+		view.InsertRune(ev.Rune())
+		adjustViewport(view, screen)
 	} else {
 		command := a.keyBindings.GetCommandForKey(ev.Key(), ev.Modifiers())
 		if command != nil {
-			ret, err := command.Execute(a, a.views[a.currentView], screen, ev)
+			ret, err := command.Execute(a, a.getCurrentView(), screen, ev)
 			if err != nil {
-				if a.statusBar != nil {
-					a.statusBar.Errorf(screen, "Error executing command: %v", err)
-				}
+				a.statusBar.Errorf(screen, "Error executing command: %v", err)
 			}
 			return ret
 		}
@@ -184,15 +154,16 @@ func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
 
 func (a *app) handleMouse(ev *tcell.EventMouse) {
 	x, y := ev.Position()
+	view := a.getCurrentView()
 
 	switch ev.Buttons() {
 	case tcell.Button1:
-		top, left := a.views[a.currentView].TopLeft()
-		a.views[a.currentView].SetCursor(top+y, left+x)
+		top, left := view.TopLeft()
+		view.SetCursor(top+y, left+x)
 	case tcell.WheelUp:
-		a.scrollBy(-1)
+		scrollBy(view, -1)
 	case tcell.WheelDown:
-		a.scrollBy(1)
+		scrollBy(view, 1)
 	}
 }
 
@@ -205,17 +176,22 @@ func (a *app) OpenFile(filename string) error {
 	view := NewView(buffer)
 
 	// If the current view is empty, replace it with the new one
-	if a.views[a.currentView].Buffer().GetFilename() == "" && !a.views[a.currentView].Buffer().IsDirty() {
-		a.views[a.currentView] = view
+	currentBuffer := a.getCurrentView().Buffer()
+	if currentBuffer.GetFilename() == "" && !currentBuffer.IsDirty() {
+		a.views[a.currentView] = view // replace the current view with the new one
 	} else {
-		a.views = append(a.views, view)
-		a.currentView = len(a.views) - 1
+		a.views = append(a.views, view)  // add the new view to the end of the list
+		a.currentView = len(a.views) - 1 // set the current view to the new one
 	}
 
 	return nil
 }
 
 func (a *app) GetStatusBar() StatusBar {
+	if a.statusBar == nil {
+		panic("status bar is nil") // this is a bug not an error!
+	}
+
 	return a.statusBar
 }
 
