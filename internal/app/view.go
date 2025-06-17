@@ -150,8 +150,7 @@ func (v *view) DeleteRune(forward bool) {
 	curr := v.states[v.curr]
 	idx := bufferIndexAt(curr.buffer.Contents(), curr.cursorRow, curr.cursorCol)
 
-	start := idx
-	end := idx
+	var start, end int
 	var ch byte
 	var ok bool
 	newRow := curr.cursorRow
