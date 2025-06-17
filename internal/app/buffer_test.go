@@ -82,3 +82,27 @@ func TestBufferSave(t *testing.T) {
 		t.Fatalf("expected buffer to be clean after save")
 	}
 }
+
+func TestNewBufferLoadsFile(t *testing.T) {
+	tmp, err := os.CreateTemp("", "bufferload*.txt")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer os.Remove(tmp.Name())
+	tmp.WriteString("data")
+	tmp.Close()
+
+	b, err := NewBuffer(tmp.Name())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if b.Contents().String() != "data" {
+		t.Fatalf("expected contents 'data' got %q", b.Contents().String())
+	}
+	if b.IsDirty() {
+		t.Fatalf("new buffer should not be dirty")
+	}
+	if b.GetFilename() != tmp.Name() {
+		t.Fatalf("filename not set")
+	}
+}

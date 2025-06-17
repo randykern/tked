@@ -76,3 +76,22 @@ func TestCommandSaveExecute(t *testing.T) {
 		t.Fatalf("file not saved")
 	}
 }
+
+func TestCommandMoveName(t *testing.T) {
+	tests := []struct {
+		cmd  CommandMove
+		name string
+	}{
+		{CommandMove{dRow: -1}, "up"},
+		{CommandMove{dRow: 1}, "down"},
+		{CommandMove{dCol: -1}, "left"},
+		{CommandMove{dCol: 1}, "right"},
+		{CommandMove{dRow: 2, dCol: 2}, "move"},
+	}
+
+	for _, tt := range tests {
+		if got := tt.cmd.Name(); got != tt.name {
+			t.Fatalf("expected %s got %s", tt.name, got)
+		}
+	}
+}

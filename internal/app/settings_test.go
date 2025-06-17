@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/pelletier/go-toml/v2"
 )
 
 func TestSettingsTabWidth(t *testing.T) {
@@ -54,5 +55,43 @@ func TestSettingsLoadDuplicateBinding(t *testing.T) {
 	_, err = NewSettingsFromFile(tmp.Name())
 	if err == nil {
 		t.Fatalf("expected error for duplicate binding, got nil")
+	}
+}
+
+func TestSettingsSave(t *testing.T) {
+	commands = make(map[string]Command)
+	registerCommands()
+	s := NewSettings()
+	s.SetTabWidth(8)
+	tmp, err := os.CreateTemp("", "settings*.toml")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	tmp.Close()
+	defer os.Remove(tmp.Name())
+
+	if err := s.Save(tmp.Name()); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	data, err := os.ReadFile(tmp.Name())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var cfg struct {
+		TabWidth int `toml:"tab_width"`
+		Bindings []struct {
+			Key     int    `toml:"key"`
+			Mod     uint32 `toml:"mod"`
+			Command string `toml:"command"`
+		} `toml:"key_bindings"`
+	}
+	if err := toml.Unmarshal(data, &cfg); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.TabWidth != 8 {
+		t.Fatalf("expected tab width 8 got %d", cfg.TabWidth)
+	}
+	if len(cfg.Bindings) == 0 {
+		t.Fatalf("expected key bindings saved")
 	}
 }
