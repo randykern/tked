@@ -16,5 +16,7 @@ We will use the Tcell package, found at https://github.com/gdamore/tcell
 
 ## Consequences
 
-What becomes easier or more difficult to do and any risks introduced by the change that will need to be mitigated.
+Tcell gives the editor rich, portable terminal support. Using it simplifies
+handling keyboard input and screen drawing across platforms but introduces an
+external dependency that must be kept up to date.
 

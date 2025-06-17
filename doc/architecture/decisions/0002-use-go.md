@@ -17,7 +17,7 @@ We will use the Go programming language.
 We will write unit tests, using the standard Go naming convention and putting
 those tests in the corresponding name_test.go files.
 
-We will follow a standard directory sturcture for Go programs, specifically:
+We will follow a standard directory structure for Go programs, specifically:
 
 tked/
 |--- go.mod
@@ -40,5 +40,7 @@ tked/
 
 ## Consequences
 
-What becomes easier or more difficult to do and any risks introduced by the change that will need to be mitigated.
+Selecting Go gives us a simple toolchain and a thriving ecosystem. The language is
+portable across platforms and encourages clear, testable code. Contributors will
+need basic familiarity with Go tooling such as `go build` and `go test`.
 
