@@ -7,12 +7,15 @@ import (
 type App interface {
 	OpenFile(filename string) error
 	Run(screen tcell.Screen)
+	// Settings returns the editor settings instance.
+	Settings() Settings
 }
 
 type app struct {
 	views       []View
 	statusBar   StatusBar
 	currentView int
+	settings    Settings
 }
 
 func (a *app) scrollBy(lines int) {
@@ -23,6 +26,8 @@ func (a *app) scrollBy(lines int) {
 	top, left := a.views[a.currentView].TopLeft()
 	a.views[a.currentView].SetTopLeft(max(0, top+lines), left)
 }
+
+func (a *app) Settings() Settings { return a.settings }
 
 func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
 	row := y1
@@ -40,7 +45,7 @@ func drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string
 	}
 }
 
-func drawView(v View, s tcell.Screen) {
+func drawView(v View, s tcell.Screen, tabWidth int) {
 	screenWidth, screenHeight := s.Size()
 
 	index := 0
@@ -68,13 +73,13 @@ func drawView(v View, s tcell.Screen) {
 			bufferCol = 0
 			continue
 		} else if r == '\t' {
-			// TODO: Tab width option
-			// TODO: This doesn't work quite right. See line 8 of the sample text file.
-			tabWidth := 4
+			if tabWidth <= 0 {
+				tabWidth = 4
+			}
 			if bufferCol%tabWidth == 0 {
 				bufferCol += tabWidth
 			} else {
-				bufferCol += tabWidth - bufferCol%4
+				bufferCol += tabWidth - bufferCol%tabWidth
 			}
 			continue
 		}
@@ -114,7 +119,7 @@ func (a *app) Run(screen tcell.Screen) {
 
 	// Draw initial view
 	if len(a.views) > 0 {
-		drawView(a.views[a.currentView], screen)
+		drawView(a.views[a.currentView], screen, a.settings.TabWidth())
 	}
 
 	// Event loop
@@ -139,7 +144,7 @@ eventLoop:
 		}
 
 		screen.Clear()
-		drawView(a.views[a.currentView], screen)
+		drawView(a.views[a.currentView], screen, a.settings.TabWidth())
 		if a.statusBar != nil {
 			a.statusBar.Draw(screen, a.views[a.currentView])
 		}
@@ -357,5 +362,6 @@ func NewApp() (App, error) {
 		views:       []View{NewView(buffer)},
 		statusBar:   NewStatusBar(),
 		currentView: 0,
+		settings:    NewSettings(),
 	}, nil
 }
