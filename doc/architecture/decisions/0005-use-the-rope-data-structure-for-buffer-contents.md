@@ -8,12 +8,13 @@ Accepted
 
 ## Context
 
-The issue motivating this decision, and any context that influences or constrains the decision.
+Rope is a space and time efficient data structure for long strings, and is idempotent, which is important
+for undo/redo and overall simplicity.
 
 ## Decision
 
-The change that we're proposing or have agreed to implement.
+We will use rope data structures for the underlying character data in the text editor.
 
 ## Consequences
 
-What becomes easier or more difficult to do and any risks introduced by the change that will need to be mitigated.
+Not clear yet.

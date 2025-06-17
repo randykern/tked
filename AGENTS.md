@@ -22,7 +22,7 @@ This repo implements **tked**, a simple command line text editor written in Go. 
 - buffer.go implements the buffer structure, which is the model
 - command.go provide the Comand interface and a RegisterCommand and GetCommand functions to interact with the command registry
 - commands.go implement all of the editor commands, like CommandExit, CommandUndo, etc
-- core.go implements the app structure, which has core application / controller logic
+- app.go implements the app structure, which has core application / controller logic
 - keybinding.go implements configurable keybindings to bind key events to Command implementations
 - settings.go implements editor configuration and settings
 - statusbar.go implements the status bar for the overall application

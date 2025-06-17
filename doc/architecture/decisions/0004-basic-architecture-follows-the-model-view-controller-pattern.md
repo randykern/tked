@@ -12,9 +12,8 @@ We will follow the Model View Controller pattern for our overall architecture.
 
 ## Decision
 
-The model is represented by the
-Buffer interface in the app module, the view is represented by the View interface in the app module, and the
-controller is represented by the App interface in the app module.
+The model is represented by the Buffer interface in the app module, the view is represented by
+the View interface in the app module, and the controller is represented by the App interface in the app module.
 
 ## Consequences
 
