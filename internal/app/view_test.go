@@ -1,6 +1,10 @@
 package app
 
-import "testing"
+import (
+	"testing"
+
+	"tked/internal/rope"
+)
 
 func TestViewInsertUndoRedo(t *testing.T) {
 	b, _ := NewBuffer("")
@@ -32,5 +36,42 @@ func TestViewDeleteRune(t *testing.T) {
 	v.DeleteRune(true)
 	if got := v.Buffer().Contents().String(); got != "a" {
 		t.Fatalf("forward delete at end should not change, got %q", got)
+	}
+}
+
+func TestViewDeleteRuneNewline(t *testing.T) {
+	b, _ := NewBuffer("")
+	b = b.Insert(0, "a\nb")
+	v := NewView(b)
+	v.SetCursor(1, 0)
+	v.DeleteRune(false)
+	if got := v.Buffer().Contents().String(); got != "ab" {
+		t.Fatalf("backspace newline failed, got %q", got)
+	}
+	r, c := v.Cursor()
+	if r != 0 || c != 1 {
+		t.Fatalf("expected cursor 0,1 got %d,%d", r, c)
+	}
+
+	b2, _ := NewBuffer("")
+	b2 = b2.Insert(0, "a\nb")
+	v2 := NewView(b2)
+	v2.SetCursor(0, 1)
+	v2.DeleteRune(true)
+	if got := v2.Buffer().Contents().String(); got != "ab" {
+		t.Fatalf("delete newline failed, got %q", got)
+	}
+}
+
+func TestBufferIndexAt(t *testing.T) {
+	r := rope.NewRope("hello\nworld")
+	if idx := bufferIndexAt(r, 1, 2); idx != 8 {
+		t.Fatalf("expected 8 got %d", idx)
+	}
+	if idx := bufferIndexAt(r, 0, 3); idx != 3 {
+		t.Fatalf("expected 3 got %d", idx)
+	}
+	if idx := bufferIndexAt(r, 2, 0); idx != r.Len() {
+		t.Fatalf("expected %d got %d", r.Len(), idx)
 	}
 }
