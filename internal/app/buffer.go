@@ -42,7 +42,6 @@ func (b *buffer) Save() error {
 	if err != nil {
 		return err
 	}
-
 	// Write contents to the temporary file first.
 	if _, err := rope.Write(tmp, b.contents); err != nil {
 		tmp.Close()
@@ -101,6 +100,9 @@ func (b *buffer) Delete(start, end int) Buffer {
 	}
 	if start > end {
 		start, end = end, start
+	}
+	if start == end {
+		return b
 	}
 	nb := &buffer{
 		filename: b.filename,
