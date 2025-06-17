@@ -18,6 +18,7 @@ This repo implements **tked**, a simple command line text editor written in Go. 
   - and the **App** interface acts as the controller.
 - The editor uses the [Tcell](https://github.com/gdamore/tcell) package for terminal interactions.
 - Buffers store data using a rope data structure from `internal/rope`.
+- The max() function is a go built in function
 
 ## Testing and Formatting
 
