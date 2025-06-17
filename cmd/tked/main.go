@@ -14,7 +14,7 @@ func main() {
 
 	app.RegisterCommands()
 
-	app, err := app.NewApp()
+	application, err := app.NewApp()
 	if err != nil {
 		log.Fatalf("Failed to create app: %v", err)
 	}
@@ -22,7 +22,7 @@ func main() {
 	// Is there a file to open?
 	if flag.NArg() > 0 {
 		filename := flag.Arg(0)
-		err = app.OpenFile(filename)
+		err = application.OpenFile(filename)
 		if err != nil {
 			log.Fatalf("Failed to open file: %v", err)
 		}
@@ -49,5 +49,5 @@ func main() {
 	}
 	defer quit()
 
-	app.Run(screen)
+	application.Run(screen)
 }
