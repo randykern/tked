@@ -195,6 +195,8 @@ func (a *app) GetStatusBar() StatusBar {
 }
 
 func NewApp() (App, error) {
+	registerCommands()
+
 	buffer, err := NewBuffer("")
 	if err != nil {
 		return nil, err

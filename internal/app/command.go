@@ -11,7 +11,7 @@ type Command interface {
 	Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error)
 }
 
-func RegisterCommand(name string, command Command) {
+func registerCommand(name string, command Command) {
 	if _, exists := commands[name]; exists {
 		panic(fmt.Sprintf("command %s already registered", name))
 	}

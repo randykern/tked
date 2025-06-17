@@ -177,18 +177,22 @@ func adjustViewport(view View, screen tcell.Screen) {
 	view.SetTopLeft(top, left)
 }
 
-func RegisterCommands() {
-	RegisterCommand("exit", &CommandExit{})
-	RegisterCommand("undo", &CommandUndo{})
-	RegisterCommand("redo", &CommandRedo{})
-	RegisterCommand("save", &CommandSave{})
-	RegisterCommand("open", &CommandOpen{})
-	RegisterCommand("up", &CommandMove{dRow: -1})
-	RegisterCommand("down", &CommandMove{dRow: 1})
-	RegisterCommand("left", &CommandMove{dCol: -1})
-	RegisterCommand("right", &CommandMove{dCol: 1})
-	RegisterCommand("backspace", &CommandBackspace{})
-	RegisterCommand("delete", &CommandDelete{})
-	RegisterCommand("pageup", &CommandPageUp{})
-	RegisterCommand("pagedown", &CommandPageDown{})
+func registerCommands() {
+	if len(commands) > 0 {
+		return // already registered
+	}
+
+	registerCommand("exit", &CommandExit{})
+	registerCommand("undo", &CommandUndo{})
+	registerCommand("redo", &CommandRedo{})
+	registerCommand("save", &CommandSave{})
+	registerCommand("open", &CommandOpen{})
+	registerCommand("up", &CommandMove{dRow: -1})
+	registerCommand("down", &CommandMove{dRow: 1})
+	registerCommand("left", &CommandMove{dCol: -1})
+	registerCommand("right", &CommandMove{dCol: 1})
+	registerCommand("backspace", &CommandBackspace{})
+	registerCommand("delete", &CommandDelete{})
+	registerCommand("pageup", &CommandPageUp{})
+	registerCommand("pagedown", &CommandPageDown{})
 }
