@@ -129,13 +129,13 @@ eventLoop:
 		// Process event
 		switch ev := ev.(type) {
 		case *tcell.EventResize:
-			a.handleResize(screen, ev)
+			a.handleResize(screen)
 		case *tcell.EventKey:
 			if a.handleKey(screen, ev) {
 				break eventLoop
 			}
 		case *tcell.EventMouse:
-			a.handleMouse(screen, ev)
+			a.handleMouse(ev)
 		}
 
 		screen.Clear()
@@ -146,7 +146,7 @@ eventLoop:
 	}
 }
 
-func (a *app) handleResize(screen tcell.Screen, ev *tcell.EventResize) {
+func (a *app) handleResize(screen tcell.Screen) {
 	screen.Sync()
 }
 
@@ -179,16 +179,12 @@ func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
 	case tcell.KeyPgDn:
 		a.handlePageDown(screen)
 	case tcell.KeyRune:
-		if ev.Rune() == 'C' || ev.Rune() == 'c' {
-			a.handleClear(screen)
-		} else {
-			a.handleRune(screen, ev.Rune())
-		}
+		a.handleRune(screen, ev.Rune())
 	}
 	return false
 }
 
-func (a *app) handleMouse(screen tcell.Screen, ev *tcell.EventMouse) {
+func (a *app) handleMouse(ev *tcell.EventMouse) {
 	x, y := ev.Position()
 
 	switch ev.Buttons() {
