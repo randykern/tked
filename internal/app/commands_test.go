@@ -1,0 +1,77 @@
+package app
+
+import (
+	"os"
+	"testing"
+
+	"github.com/gdamore/tcell/v2"
+)
+
+type dummyApp struct {
+	opened string
+	sb     StatusBar
+}
+
+func (d *dummyApp) OpenFile(name string) error { d.opened = name; return nil }
+func (d *dummyApp) Run(tcell.Screen)           {}
+func (d *dummyApp) Settings() Settings         { return NewSettings() }
+func (d *dummyApp) GetStatusBar() StatusBar    { return d.sb }
+
+type stubStatusBar struct{}
+
+func (stubStatusBar) Draw(tcell.Screen, View)                       {}
+func (stubStatusBar) Message(tcell.Screen, string)                  {}
+func (stubStatusBar) Messagef(tcell.Screen, string, ...interface{}) {}
+func (stubStatusBar) Error(tcell.Screen, string)                    {}
+func (stubStatusBar) Errorf(tcell.Screen, string, ...interface{})   {}
+func (stubStatusBar) Input(tcell.Screen, string) (string, bool)     { return "test.txt", true }
+
+func TestCommandOpenExecute(t *testing.T) {
+	commands = make(map[string]Command)
+	RegisterCommands()
+	d := &dummyApp{sb: stubStatusBar{}}
+	screen := tcell.NewSimulationScreen("")
+	screen.Init()
+	cmd := &CommandOpen{}
+	if _, err := cmd.Execute(d, nil, screen, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if d.opened != "test.txt" {
+		t.Fatalf("expected file opened")
+	}
+}
+
+func TestCommandMoveExecute(t *testing.T) {
+	b, _ := NewBuffer("")
+	v := NewView(b)
+	screen := tcell.NewSimulationScreen("")
+	screen.Init()
+	screen.SetSize(10, 10)
+	v.SetCursor(0, 0)
+	c := &CommandMove{dRow: 1, dCol: 1}
+	if _, err := c.Execute(nil, v, screen, nil); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+	r, c2 := v.Cursor()
+	if r != 1 || c2 != 1 {
+		t.Fatalf("expected cursor 1,1 got %d,%d", r, c2)
+	}
+}
+
+func TestCommandSaveExecute(t *testing.T) {
+	tmp, _ := os.CreateTemp("", "cmdsave*.txt")
+	tmp.Close()
+	defer os.Remove(tmp.Name())
+	b, _ := NewBuffer(tmp.Name())
+	v := NewView(b.Insert(0, "data"))
+	screen := tcell.NewSimulationScreen("")
+	screen.Init()
+	cmd := &CommandSave{}
+	if _, err := cmd.Execute(nil, v, screen, nil); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	data, _ := os.ReadFile(tmp.Name())
+	if string(data) != "data" {
+		t.Fatalf("file not saved")
+	}
+}
