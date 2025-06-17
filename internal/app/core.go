@@ -20,7 +20,6 @@ type app struct {
 	statusBar   StatusBar
 	currentView int
 	settings    Settings
-	keyBindings KeyBindings
 }
 
 func (a *app) getCurrentView() View {
@@ -139,7 +138,7 @@ func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
 		view.InsertRune(ev.Rune())
 		adjustViewport(view, screen)
 	} else {
-		command := a.keyBindings.GetCommandForKey(ev.Key(), ev.Modifiers())
+		command := a.settings.KeyBindings().GetCommandForKey(ev.Key(), ev.Modifiers())
 		if command != nil {
 			ret, err := command.Execute(a, a.getCurrentView(), screen, ev)
 			if err != nil {
@@ -206,6 +205,5 @@ func NewApp() (App, error) {
 		statusBar:   NewStatusBar(),
 		currentView: 0,
 		settings:    NewSettings(),
-		keyBindings: DefaultKeyBindings(),
 	}, nil
 }
