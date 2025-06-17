@@ -30,6 +30,6 @@ This repo implements **tked**, a simple command line text editor written in Go. 
 
 ## Testing and Formatting
 
-- Unit tests live in `*_test.go` files next to the code under test.
+- Unit tests live in `*_test.go` files next to the code under test. Write thorough unit tests for all changes.
 - Run tests using `go test ./...` before committing.
 - Format code with `gofmt -w` on any changed Go files.

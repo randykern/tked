@@ -30,7 +30,10 @@ type settings struct {
 
 // NewSettings creates a new Settings instance with default values.
 func NewSettings() Settings {
-	return &settings{tabWidth: 4, keyBindings: DefaultKeyBindings()}
+	return &settings{
+		tabWidth:    4,
+		keyBindings: DefaultKeyBindings(),
+	}
 }
 
 func (s *settings) TabWidth() int { return s.tabWidth }
