@@ -5,6 +5,10 @@ import "tked/internal/rope"
 type View interface {
 	// Buffer returns the buffer that the view is displaying.
 	Buffer() Buffer
+	// Size returns the number of rows and columns visible in the view.
+	Size() (int, int)
+	// Resize updates the number of rows and columns visible in the view.
+	Resize(rows, cols int)
 	// TopLeft returns the top row and left column offsets.
 	TopLeft() (int, int)
 	// SetTopLeft updates the view's top row and left column offsets.
@@ -36,6 +40,8 @@ type viewState struct {
 type view struct {
 	states []viewState
 	curr   int
+	width  int
+	height int
 }
 
 func (v *view) Buffer() Buffer {
@@ -43,6 +49,15 @@ func (v *view) Buffer() Buffer {
 		return nil
 	}
 	return v.states[v.curr].buffer
+}
+
+func (v *view) Size() (int, int) {
+	return v.height, v.width
+}
+
+func (v *view) Resize(rows, cols int) {
+	v.height = max(1, rows)
+	v.width = max(1, cols)
 }
 
 func (v *view) TopLeft() (int, int) {
@@ -79,28 +94,6 @@ func (v *view) SetCursor(row, col int) {
 	s.cursorCol = max(0, col)
 }
 
-func bufferIndexAt(r rope.Rope, row, col int) int {
-	idx := 0
-	currRow := 0
-	currCol := 0
-	for {
-		if currRow == row && currCol == col {
-			return idx
-		}
-		b, ok := r.Index(idx)
-		if !ok {
-			return idx
-		}
-		if b == '\n' {
-			currRow++
-			currCol = 0
-		} else {
-			currCol++
-		}
-		idx++
-	}
-}
-
 func (v *view) InsertRune(r rune) {
 	if len(v.states) == 0 {
 		return
@@ -128,18 +121,6 @@ func (v *view) InsertRune(r rune) {
 	}
 	v.states = append([]viewState{newState}, v.states[v.curr:]...)
 	v.curr = 0
-}
-
-func (v *view) Undo() {
-	if v.curr+1 < len(v.states) {
-		v.curr++
-	}
-}
-
-func (v *view) Redo() {
-	if v.curr > 0 {
-		v.curr--
-	}
 }
 
 func (v *view) DeleteRune(forward bool) {
@@ -210,6 +191,18 @@ func (v *view) DeleteRune(forward bool) {
 	v.curr = 0
 }
 
+func (v *view) Undo() {
+	if v.curr+1 < len(v.states) {
+		v.curr++
+	}
+}
+
+func (v *view) Redo() {
+	if v.curr > 0 {
+		v.curr--
+	}
+}
+
 func NewView(buffer Buffer) View {
 	return &view{
 		states: []viewState{
@@ -221,6 +214,30 @@ func NewView(buffer Buffer) View {
 				cursorCol: 0,
 			},
 		},
-		curr: 0,
+		curr:   0,
+		width:  80,
+		height: 24,
+	}
+}
+
+func bufferIndexAt(r rope.Rope, row, col int) int {
+	idx := 0
+	currRow := 0
+	currCol := 0
+	for {
+		if currRow == row && currCol == col {
+			return idx
+		}
+		b, ok := r.Index(idx)
+		if !ok {
+			return idx
+		}
+		if b == '\n' {
+			currRow++
+			currCol = 0
+		} else {
+			currCol++
+		}
+		idx++
 	}
 }

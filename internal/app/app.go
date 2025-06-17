@@ -97,6 +97,12 @@ func (a *app) Run(screen tcell.Screen) {
 	screen.EnablePaste()
 	screen.Clear()
 
+	// Get the initial screen size and update each view to match
+	width, height := screen.Size()
+	for _, view := range a.views {
+		view.Resize(height, width)
+	}
+
 	// Draw initial status bar
 	a.statusBar.Draw(screen, a.getCurrentView())
 
@@ -131,6 +137,12 @@ eventLoop:
 }
 
 func (a *app) handleResize(screen tcell.Screen) {
+	// TODO: This will have to be smarter about resizing views- not all are full screen
+	width, height := screen.Size()
+	for _, view := range a.views {
+		view.Resize(height, width)
+	}
+
 	screen.Sync()
 }
 
@@ -179,6 +191,10 @@ func (a *app) OpenFile(filename string) error {
 	}
 
 	view := NewView(buffer)
+
+	// Resize the view to match the current view's size
+	width, height := a.getCurrentView().Size()
+	view.Resize(height, width)
 
 	// If the current view is empty, replace it with the new one
 	currentBuffer := a.getCurrentView().Buffer()
