@@ -8,7 +8,7 @@ import (
 
 func TestNewKeyBindings(t *testing.T) {
 	commands = make(map[string]Command)
-	RegisterCommand("exit", &CommandExit{})
+	registerCommand("exit", &CommandExit{})
 	kb := NewKeyBindings([]KeyBinding{{Key: tcell.KeyCtrlA, Mod: tcell.ModCtrl, Command: GetCommand("exit")}})
 	if kb.GetCommandForKey(tcell.KeyCtrlA, tcell.ModCtrl) == nil {
 		t.Fatalf("expected command for key")
@@ -17,7 +17,7 @@ func TestNewKeyBindings(t *testing.T) {
 
 func TestDefaultKeyBindingsIncludesExit(t *testing.T) {
 	commands = make(map[string]Command)
-	RegisterCommands()
+	registerCommands()
 	kb := DefaultKeyBindings()
 	if kb.GetCommandForKey(tcell.KeyEscape, tcell.ModNone) == nil {
 		t.Fatalf("expected exit binding present")

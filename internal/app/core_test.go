@@ -7,7 +7,7 @@ import (
 
 func TestNewAppAndOpenFile(t *testing.T) {
 	commands = make(map[string]Command)
-	RegisterCommands()
+	registerCommands()
 	aInt, err := NewApp()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

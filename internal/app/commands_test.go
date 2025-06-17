@@ -28,7 +28,7 @@ func (stubStatusBar) Input(tcell.Screen, string) (string, bool)     { return "te
 
 func TestCommandOpenExecute(t *testing.T) {
 	commands = make(map[string]Command)
-	RegisterCommands()
+	registerCommands()
 	d := &dummyApp{sb: stubStatusBar{}}
 	screen := tcell.NewSimulationScreen("")
 	screen.Init()
