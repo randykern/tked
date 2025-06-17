@@ -5,7 +5,9 @@ import (
 )
 
 type App interface {
+	// OpenFile opens a file and adds a new view for it.
 	OpenFile(filename string) error
+	// Run starts the application and enters the event loop.
 	Run(screen tcell.Screen)
 	// Settings returns the editor settings instance.
 	Settings() Settings
@@ -16,6 +18,7 @@ type app struct {
 	statusBar   StatusBar
 	currentView int
 	settings    Settings
+	keyBindings KeyBindings
 }
 
 func (a *app) scrollBy(lines int) {
@@ -156,9 +159,18 @@ func (a *app) handleResize(screen tcell.Screen) {
 }
 
 func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
+	command := a.keyBindings.GetCommandForKey(ev.Key(), ev.Modifiers())
+	if command != nil {
+		ret, err := command.Execute(a.views[a.currentView], screen, ev)
+		if err != nil {
+			if a.statusBar != nil {
+				a.statusBar.Errorf(screen, "Error executing command: %v", err)
+			}
+		}
+		return ret
+	}
+
 	switch ev.Key() {
-	case tcell.KeyEscape:
-		return a.handleEscape()
 	case tcell.KeyCtrlZ:
 		a.handleUndo()
 	case tcell.KeyCtrlR:
@@ -363,5 +375,6 @@ func NewApp() (App, error) {
 		statusBar:   NewStatusBar(),
 		currentView: 0,
 		settings:    NewSettings(),
+		keyBindings: DefaultKeyBindings(),
 	}, nil
 }
