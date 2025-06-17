@@ -10,6 +10,182 @@ func (c *CommandExit) Execute(view View, screen tcell.Screen, ev *tcell.EventKey
 	return true, nil
 }
 
+type CommandUndo struct{}
+
+func (c *CommandUndo) Name() string { return "undo" }
+
+func (c *CommandUndo) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+	if view != nil {
+		view.Undo()
+	}
+	return false, nil
+}
+
+type CommandRedo struct{}
+
+func (c *CommandRedo) Name() string { return "redo" }
+
+func (c *CommandRedo) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+	if view != nil {
+		view.Redo()
+	}
+	return false, nil
+}
+
+type CommandSave struct{}
+
+func (c *CommandSave) Name() string { return "save" }
+
+func (c *CommandSave) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+	if view != nil {
+		if err := view.Buffer().Save(); err != nil {
+			return false, err
+		}
+	}
+	return false, nil
+}
+
+type CommandMove struct {
+	dRow int
+	dCol int
+}
+
+func (c *CommandMove) Name() string {
+	switch {
+	case c.dRow == -1 && c.dCol == 0:
+		return "up"
+	case c.dRow == 1 && c.dCol == 0:
+		return "down"
+	case c.dRow == 0 && c.dCol == -1:
+		return "left"
+	case c.dRow == 0 && c.dCol == 1:
+		return "right"
+	}
+	return "move"
+}
+
+func (c *CommandMove) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+	if view == nil {
+		return false, nil
+	}
+	row, col := view.Cursor()
+	row += c.dRow
+	col += c.dCol
+	row = max(0, row)
+	col = max(0, col)
+	view.SetCursor(row, col)
+	adjustViewport(view, screen)
+	return false, nil
+}
+
+type CommandBackspace struct{}
+
+func (c *CommandBackspace) Name() string { return "backspace" }
+
+func (c *CommandBackspace) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+	if view != nil {
+		view.DeleteRune(false)
+		adjustViewport(view, screen)
+	}
+	return false, nil
+}
+
+type CommandDelete struct{}
+
+func (c *CommandDelete) Name() string { return "delete" }
+
+func (c *CommandDelete) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+	if view != nil {
+		view.DeleteRune(true)
+		adjustViewport(view, screen)
+	}
+	return false, nil
+}
+
+type CommandInsertRune struct{}
+
+func (c *CommandInsertRune) Name() string { return "rune" }
+
+func (c *CommandInsertRune) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+	if view != nil {
+		view.InsertRune(ev.Rune())
+		adjustViewport(view, screen)
+	}
+	return false, nil
+}
+
+type CommandPageUp struct{}
+
+func (c *CommandPageUp) Name() string { return "pageup" }
+
+func (c *CommandPageUp) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+	if view == nil {
+		return false, nil
+	}
+	_, height := screen.Size()
+	row, col := view.Cursor()
+	page := height - 1
+	scrollBy(view, -page)
+	row = max(0, row-page)
+	view.SetCursor(row, col)
+	return false, nil
+}
+
+type CommandPageDown struct{}
+
+func (c *CommandPageDown) Name() string { return "pagedown" }
+
+func (c *CommandPageDown) Execute(view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
+	if view == nil {
+		return false, nil
+	}
+	_, height := screen.Size()
+	row, col := view.Cursor()
+	page := height - 1
+	scrollBy(view, page)
+	row += page
+	view.SetCursor(row, col)
+	return false, nil
+}
+
 func RegisterCommands() {
 	RegisterCommand("exit", &CommandExit{})
+	RegisterCommand("undo", &CommandUndo{})
+	RegisterCommand("redo", &CommandRedo{})
+	RegisterCommand("save", &CommandSave{})
+	RegisterCommand("up", &CommandMove{dRow: -1})
+	RegisterCommand("down", &CommandMove{dRow: 1})
+	RegisterCommand("left", &CommandMove{dCol: -1})
+	RegisterCommand("right", &CommandMove{dCol: 1})
+	RegisterCommand("backspace", &CommandBackspace{})
+	RegisterCommand("delete", &CommandDelete{})
+	RegisterCommand("pageup", &CommandPageUp{})
+	RegisterCommand("pagedown", &CommandPageDown{})
+	RegisterCommand("rune", &CommandInsertRune{})
+}
+
+func scrollBy(view View, lines int) {
+	top, left := view.TopLeft()
+	top = max(0, top+lines)
+	view.SetTopLeft(top, left)
+}
+
+func adjustViewport(view View, screen tcell.Screen) {
+	width, height := screen.Size()
+	top, left := view.TopLeft()
+	row, col := view.Cursor()
+
+	if row < top {
+		top = row
+	} else if row >= top+height-1 {
+		top = row - height + 2
+	}
+
+	if col < left {
+		left = col
+	} else if col >= left+width-1 {
+		left = col - (width - 2)
+	}
+
+	view.SetTopLeft(top, left)
 }
