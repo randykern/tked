@@ -144,7 +144,9 @@ eventLoop:
 			} else if ev.Key() == tcell.KeyCtrlS {
 				if len(a.views) > 0 {
 					if err := a.views[a.currentView].Buffer().Save(); err != nil {
-						// TODO: handle error properly (status bar?)
+						if a.statusBar != nil {
+							a.statusBar.Errorf(screen, "Error saving file: %v", err)
+						}
 					}
 				}
 			} else if ev.Key() == tcell.KeyCtrlO {
@@ -152,7 +154,9 @@ eventLoop:
 					filename, ok := a.statusBar.Input(screen, "Open file: ")
 					if ok && filename != "" {
 						if err := a.OpenFile(filename); err != nil {
-							// TODO: handle error properly (status bar?)
+							if a.statusBar != nil {
+								a.statusBar.Errorf(screen, "Error opening file: %v", err)
+							}
 						}
 					}
 				}
