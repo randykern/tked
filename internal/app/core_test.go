@@ -3,6 +3,8 @@ package app
 import (
 	"os"
 	"testing"
+
+	"github.com/gdamore/tcell/v2"
 )
 
 func TestNewAppAndOpenFile(t *testing.T) {
@@ -31,5 +33,24 @@ func TestNewAppAndOpenFile(t *testing.T) {
 	}
 	if v.Buffer().Contents().String() != "hi" {
 		t.Fatalf("content not loaded")
+	}
+}
+
+func TestHandleKeyEnter(t *testing.T) {
+	commands = make(map[string]Command)
+	registerCommands()
+	aInt, err := NewApp()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	a := aInt.(*app)
+	screen := tcell.NewSimulationScreen("")
+	screen.Init()
+	screen.SetSize(20, 5)
+	ev := tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
+	a.handleKey(screen, ev)
+	got := a.getCurrentView().Buffer().Contents().String()
+	if got != "\n" {
+		t.Fatalf("expected newline got %q", got)
 	}
 }

@@ -135,9 +135,13 @@ func (a *app) handleResize(screen tcell.Screen) {
 }
 
 func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
-	if ev.Key() == tcell.KeyRune {
+	if ev.Key() == tcell.KeyRune || ev.Key() == tcell.KeyEnter {
 		view := a.getCurrentView()
-		view.InsertRune(ev.Rune())
+		r := ev.Rune()
+		if ev.Key() == tcell.KeyEnter {
+			r = '\n'
+		}
+		view.InsertRune(r)
 		adjustViewport(view, screen)
 	} else {
 		command := a.settings.KeyBindings().GetCommandForKey(ev.Key(), ev.Modifiers())
