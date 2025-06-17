@@ -151,160 +151,40 @@ func (a *app) handleResize(screen tcell.Screen, ev *tcell.EventResize) {
 }
 
 func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
-	if ev.Key() == tcell.KeyEscape {
-		return true
-	} else if ev.Key() == tcell.KeyCtrlZ {
-		if len(a.views) > 0 {
-			a.views[a.currentView].Undo()
-		}
-	} else if ev.Key() == tcell.KeyCtrlR {
-		if len(a.views) > 0 {
-			a.views[a.currentView].Redo()
-		}
-	} else if ev.Key() == tcell.KeyCtrlS {
-		if len(a.views) > 0 {
-			if err := a.views[a.currentView].Buffer().Save(); err != nil {
-				if a.statusBar != nil {
-					a.statusBar.Errorf(screen, "Error saving file: %v", err)
-				}
-			}
-		}
-	} else if ev.Key() == tcell.KeyCtrlO {
-		if a.statusBar != nil {
-			filename, ok := a.statusBar.Input(screen, "Open file: ")
-			if ok && filename != "" {
-				if err := a.OpenFile(filename); err != nil {
-					if a.statusBar != nil {
-						a.statusBar.Errorf(screen, "Error opening file: %v", err)
-					}
-				}
-			}
-		}
-	} else if ev.Rune() == 'C' || ev.Rune() == 'c' {
-		screen.Clear()
-	} else if ev.Key() == tcell.KeyUp || ev.Key() == tcell.KeyDown || ev.Key() == tcell.KeyLeft || ev.Key() == tcell.KeyRight {
-		if len(a.views) > 0 {
-			row, col := a.views[a.currentView].Cursor()
-			switch ev.Key() {
-			case tcell.KeyUp:
-				row--
-			case tcell.KeyDown:
-				row++
-			case tcell.KeyLeft:
-				col--
-			case tcell.KeyRight:
-				col++
-			}
-
-			// Make sure we don't move the cursor before the start of the file
-			row = max(0, row)
-			col = max(0, col)
-
-			// TODO: Moving the cursor past the end?
-
-			// Adjust viewport if cursor moved outside visible area
-			width, height := screen.Size()
-			top, left := a.views[a.currentView].TopLeft()
-
-			if row < top {
-				// Moved out the top of the viewport- make the new top row the cursor row
-				top = row
-			} else if row >= top+height-1 {
-				// Moved out the bottom of the viewport- make the new bottom row the cursor row
-				top = row - height + 2
-			}
-
-			if col < left {
-				left = col
-			} else if col >= left+width-1 {
-				left = col - (width - 2)
-			}
-
-			a.views[a.currentView].SetTopLeft(top, left)
-			a.views[a.currentView].SetCursor(row, col)
-		}
-	} else if ev.Key() == tcell.KeyBackspace || ev.Key() == tcell.KeyBackspace2 {
-		if len(a.views) > 0 {
-			a.views[a.currentView].DeleteRune(false)
-
-			width, height := screen.Size()
-			top, left := a.views[a.currentView].TopLeft()
-			row, col := a.views[a.currentView].Cursor()
-
-			if row < top {
-				top = row
-			} else if row >= top+height-1 {
-				top = row - height + 2
-			}
-
-			if col < left {
-				left = col
-			} else if col >= left+width-1 {
-				left = col - (width - 2)
-			}
-
-			a.views[a.currentView].SetTopLeft(top, left)
-		}
-	} else if ev.Key() == tcell.KeyDelete {
-		if len(a.views) > 0 {
-			a.views[a.currentView].DeleteRune(true)
-
-			width, height := screen.Size()
-			top, left := a.views[a.currentView].TopLeft()
-			row, col := a.views[a.currentView].Cursor()
-
-			if row < top {
-				top = row
-			} else if row >= top+height-1 {
-				top = row - height + 2
-			}
-
-			if col < left {
-				left = col
-			} else if col >= left+width-1 {
-				left = col - (width - 2)
-			}
-
-			a.views[a.currentView].SetTopLeft(top, left)
-		}
-	} else if ev.Key() == tcell.KeyRune {
-		if len(a.views) > 0 {
-			a.views[a.currentView].InsertRune(ev.Rune())
-
-			width, height := screen.Size()
-			top, left := a.views[a.currentView].TopLeft()
-			row, col := a.views[a.currentView].Cursor()
-
-			if row < top {
-				top = row
-			} else if row >= top+height-1 {
-				top = row - height + 2
-			}
-
-			if col < left {
-				left = col
-			} else if col >= left+width-1 {
-				left = col - (width - 2)
-			}
-
-			a.views[a.currentView].SetTopLeft(top, left)
-		}
-	} else if ev.Key() == tcell.KeyPgUp || ev.Key() == tcell.KeyPgDn {
-		if len(a.views) > 0 {
-			_, height := screen.Size()
-			row, col := a.views[a.currentView].Cursor()
-			page := height - 1
-			if ev.Key() == tcell.KeyPgUp {
-				a.scrollBy(-page)
-				row = max(0, row-page)
-			} else {
-				a.scrollBy(page)
-				row = row + page
-			}
-			a.views[a.currentView].SetCursor(row, col)
+	switch ev.Key() {
+	case tcell.KeyEscape:
+		return a.handleEscape()
+	case tcell.KeyCtrlZ:
+		a.handleUndo()
+	case tcell.KeyCtrlR:
+		a.handleRedo()
+	case tcell.KeyCtrlS:
+		a.handleSave(screen)
+	case tcell.KeyCtrlO:
+		a.handleOpen(screen)
+	case tcell.KeyUp:
+		a.handleUp(screen)
+	case tcell.KeyDown:
+		a.handleDown(screen)
+	case tcell.KeyLeft:
+		a.handleLeft(screen)
+	case tcell.KeyRight:
+		a.handleRight(screen)
+	case tcell.KeyBackspace, tcell.KeyBackspace2:
+		a.handleBackspace(screen)
+	case tcell.KeyDelete:
+		a.handleDelete(screen)
+	case tcell.KeyPgUp:
+		a.handlePageUp(screen)
+	case tcell.KeyPgDn:
+		a.handlePageDown(screen)
+	case tcell.KeyRune:
+		if ev.Rune() == 'C' || ev.Rune() == 'c' {
+			a.handleClear(screen)
+		} else {
+			a.handleRune(screen, ev.Rune())
 		}
 	}
-
 	return false
 }
 
@@ -320,6 +200,136 @@ func (a *app) handleMouse(screen tcell.Screen, ev *tcell.EventMouse) {
 	case tcell.WheelDown:
 		a.scrollBy(1)
 	}
+}
+
+// handleEscape returns true to signal that the application should exit.
+func (a *app) handleEscape() bool {
+	return true
+}
+
+func (a *app) handleUndo() {
+	if len(a.views) > 0 {
+		a.views[a.currentView].Undo()
+	}
+}
+
+func (a *app) handleRedo() {
+	if len(a.views) > 0 {
+		a.views[a.currentView].Redo()
+	}
+}
+
+func (a *app) handleSave(screen tcell.Screen) {
+	if len(a.views) > 0 {
+		if err := a.views[a.currentView].Buffer().Save(); err != nil {
+			if a.statusBar != nil {
+				a.statusBar.Errorf(screen, "Error saving file: %v", err)
+			}
+		}
+	}
+}
+
+func (a *app) handleOpen(screen tcell.Screen) {
+	if a.statusBar != nil {
+		filename, ok := a.statusBar.Input(screen, "Open file: ")
+		if ok && filename != "" {
+			if err := a.OpenFile(filename); err != nil {
+				if a.statusBar != nil {
+					a.statusBar.Errorf(screen, "Error opening file: %v", err)
+				}
+			}
+		}
+	}
+}
+
+func (a *app) handleClear(screen tcell.Screen) {
+	screen.Clear()
+}
+
+func (a *app) adjustViewport(screen tcell.Screen) {
+	width, height := screen.Size()
+	top, left := a.views[a.currentView].TopLeft()
+	row, col := a.views[a.currentView].Cursor()
+
+	if row < top {
+		top = row
+	} else if row >= top+height-1 {
+		top = row - height + 2
+	}
+
+	if col < left {
+		left = col
+	} else if col >= left+width-1 {
+		left = col - (width - 2)
+	}
+
+	a.views[a.currentView].SetTopLeft(top, left)
+}
+
+func (a *app) moveCursor(screen tcell.Screen, dRow, dCol int) {
+	if len(a.views) == 0 {
+		return
+	}
+	row, col := a.views[a.currentView].Cursor()
+	row += dRow
+	col += dCol
+	row = max(0, row)
+	col = max(0, col)
+	a.views[a.currentView].SetCursor(row, col)
+	a.adjustViewport(screen)
+}
+
+func (a *app) handleUp(screen tcell.Screen)    { a.moveCursor(screen, -1, 0) }
+func (a *app) handleDown(screen tcell.Screen)  { a.moveCursor(screen, 1, 0) }
+func (a *app) handleLeft(screen tcell.Screen)  { a.moveCursor(screen, 0, -1) }
+func (a *app) handleRight(screen tcell.Screen) { a.moveCursor(screen, 0, 1) }
+
+func (a *app) handleBackspace(screen tcell.Screen) {
+	if len(a.views) == 0 {
+		return
+	}
+	a.views[a.currentView].DeleteRune(false)
+	a.adjustViewport(screen)
+}
+
+func (a *app) handleDelete(screen tcell.Screen) {
+	if len(a.views) == 0 {
+		return
+	}
+	a.views[a.currentView].DeleteRune(true)
+	a.adjustViewport(screen)
+}
+
+func (a *app) handleRune(screen tcell.Screen, r rune) {
+	if len(a.views) == 0 {
+		return
+	}
+	a.views[a.currentView].InsertRune(r)
+	a.adjustViewport(screen)
+}
+
+func (a *app) handlePageUp(screen tcell.Screen) {
+	if len(a.views) == 0 {
+		return
+	}
+	_, height := screen.Size()
+	row, col := a.views[a.currentView].Cursor()
+	page := height - 1
+	a.scrollBy(-page)
+	row = max(0, row-page)
+	a.views[a.currentView].SetCursor(row, col)
+}
+
+func (a *app) handlePageDown(screen tcell.Screen) {
+	if len(a.views) == 0 {
+		return
+	}
+	_, height := screen.Size()
+	row, col := a.views[a.currentView].Cursor()
+	page := height - 1
+	a.scrollBy(page)
+	row += page
+	a.views[a.currentView].SetCursor(row, col)
 }
 
 func (a *app) OpenFile(filename string) error {
