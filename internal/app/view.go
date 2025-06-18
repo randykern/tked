@@ -14,7 +14,8 @@ type View interface {
 	// Returns the buffer in this view.
 	Buffer() Buffer
 
-	// TODO: Is this needed outside of drawing?
+	// TODO: It might be nice to remove this. It is only used for drawing
+	// and scrolling to ensure the cursor is visible.
 	// Size returns the number of rows and columns visible in the view.
 	Size() (int, int)
 	// Resize updates the number of rows and columns visible in the view.
