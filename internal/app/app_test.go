@@ -85,3 +85,48 @@ func TestHandleMouseTabClick(t *testing.T) {
 		t.Fatalf("expected current view 1 got %d", a.currentView)
 	}
 }
+
+type stubStatusBarClose struct{}
+
+func (stubStatusBarClose) SetScreen(tcell.Screen)      {}
+func (stubStatusBarClose) Draw(View)                   {}
+func (stubStatusBarClose) Message(string)              {}
+func (stubStatusBarClose) Messagef(string, ...any)     {}
+func (stubStatusBarClose) Error(string)                {}
+func (stubStatusBarClose) Errorf(string, ...any)       {}
+func (stubStatusBarClose) Input(string) (string, bool) { return "n", true }
+
+func TestHandleMouseTabClose(t *testing.T) {
+	commands = make(map[string]Command)
+	registerCommands()
+	aInt, err := NewApp()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	a := aInt.(*app)
+	screen := tcell.NewSimulationScreen("")
+	screen.Init()
+	screen.SetSize(20, 5)
+	a.statusBar.SetScreen(screen)
+	a.tabBar.SetScreen(screen)
+	a.statusBar = stubStatusBarClose{}
+
+	v2 := NewView("second.txt", nil)
+	v2.InsertRune('a')
+	a.views = append(a.views, v2)
+	for _, v := range a.views {
+		v.Resize(4, 20)
+	}
+	a.tabBar.Draw(a.views, a.currentView)
+
+	tb := a.tabBar.(*tabBar)
+	x := tb.tabPositions[1].closeStart
+	ev := tcell.NewEventMouse(x, 0, tcell.Button1, tcell.ModNone)
+	a.handleMouse(ev)
+	if len(a.views) != 1 {
+		t.Fatalf("expected view to be closed")
+	}
+	if a.currentView != 0 {
+		t.Fatalf("expected current view 0 got %d", a.currentView)
+	}
+}
