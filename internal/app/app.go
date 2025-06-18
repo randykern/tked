@@ -15,6 +15,8 @@ type App interface {
 	GetStatusBar() StatusBar
 	// LoadSettings loads the settings from the given file.
 	LoadSettings(filename string) error
+	// GetCurrentView returns the current view.
+	GetCurrentView() View
 }
 
 type app struct {
@@ -24,7 +26,7 @@ type app struct {
 	settings    Settings
 }
 
-func (a *app) getCurrentView() View {
+func (a *app) GetCurrentView() View {
 	if a.currentView < 0 || a.currentView >= len(a.views) || a.views[a.currentView] == nil {
 		panic("no active view") // this is a bug not an error!
 	}
@@ -105,10 +107,10 @@ func (a *app) Run(screen tcell.Screen) {
 
 	// Draw initial status bar
 	a.statusBar.SetScreen(screen) // status bar needs to know the screen to draw on
-	a.statusBar.Draw(a.getCurrentView())
+	a.statusBar.Draw(a.GetCurrentView())
 
 	// Draw initial view
-	drawView(a.getCurrentView(), screen, a.settings.TabWidth())
+	drawView(a.GetCurrentView(), screen, a.settings.TabWidth())
 
 	// Event loop
 eventLoop:
@@ -124,7 +126,7 @@ eventLoop:
 		case *tcell.EventResize:
 			a.handleResize(screen)
 		case *tcell.EventKey:
-			if a.handleKey(screen, ev) {
+			if a.handleKey(ev) {
 				break eventLoop
 			}
 		case *tcell.EventMouse:
@@ -132,8 +134,8 @@ eventLoop:
 		}
 
 		screen.Clear()
-		drawView(a.getCurrentView(), screen, a.settings.TabWidth())
-		a.statusBar.Draw(a.getCurrentView())
+		drawView(a.GetCurrentView(), screen, a.settings.TabWidth())
+		a.statusBar.Draw(a.GetCurrentView())
 	}
 }
 
@@ -147,9 +149,9 @@ func (a *app) handleResize(screen tcell.Screen) {
 	screen.Sync()
 }
 
-func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
+func (a *app) handleKey(ev *tcell.EventKey) bool {
 	if ev.Key() == tcell.KeyRune || ev.Key() == tcell.KeyEnter {
-		view := a.getCurrentView()
+		view := a.GetCurrentView()
 		r := ev.Rune()
 		if ev.Key() == tcell.KeyEnter {
 			r = '\n'
@@ -158,7 +160,7 @@ func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
 	} else {
 		command := a.settings.KeyBindings().GetCommandForKey(ev.Key(), ev.Modifiers())
 		if command != nil {
-			ret, err := command.Execute(a, a.getCurrentView(), screen, ev)
+			ret, err := command.Execute(a, ev)
 			if err != nil {
 				a.statusBar.Errorf("Error executing command: %v", err)
 			}
@@ -171,7 +173,7 @@ func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
 
 func (a *app) handleMouse(ev *tcell.EventMouse) {
 	x, y := ev.Position()
-	view := a.getCurrentView()
+	view := a.GetCurrentView()
 
 	switch ev.Buttons() {
 	case tcell.Button1:
@@ -193,11 +195,11 @@ func (a *app) OpenFile(filename string) error {
 	view := NewView(buffer)
 
 	// Resize the view to match the current view's size
-	width, height := a.getCurrentView().Size()
+	width, height := a.GetCurrentView().Size()
 	view.Resize(height, width)
 
 	// If the current view is empty, replace it with the new one
-	currentBuffer := a.getCurrentView().Buffer()
+	currentBuffer := a.GetCurrentView().Buffer()
 	if currentBuffer.GetFilename() == "" && !currentBuffer.IsDirty() {
 		a.views[a.currentView] = view // replace the current view with the new one
 	} else {

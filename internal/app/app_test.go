@@ -27,7 +27,7 @@ func TestNewAppAndOpenFile(t *testing.T) {
 	if len(a.views) != 1 {
 		t.Fatalf("empty view should be replaced")
 	}
-	v := a.getCurrentView()
+	v := a.GetCurrentView()
 	if v.Buffer().GetFilename() != tmp.Name() {
 		t.Fatalf("filename not set")
 	}
@@ -47,9 +47,11 @@ func TestHandleKeyEnter(t *testing.T) {
 	screen := tcell.NewSimulationScreen("")
 	screen.Init()
 	screen.SetSize(20, 5)
+	a.statusBar.SetScreen(screen)
+
 	ev := tcell.NewEventKey(tcell.KeyEnter, 0, tcell.ModNone)
-	a.handleKey(screen, ev)
-	got := a.getCurrentView().Buffer().Contents().String()
+	a.handleKey(ev)
+	got := a.GetCurrentView().Buffer().Contents().String()
 	if got != "\n" {
 		t.Fatalf("expected newline got %q", got)
 	}

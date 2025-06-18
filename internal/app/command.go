@@ -8,7 +8,7 @@ import (
 
 type Command interface {
 	Name() string
-	Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error)
+	Execute(app App, ev *tcell.EventKey) (bool, error)
 }
 
 func registerCommand(name string, command Command) {

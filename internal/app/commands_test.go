@@ -10,6 +10,7 @@ import (
 type dummyApp struct {
 	opened string
 	sb     StatusBar
+	view   View
 }
 
 func (d *dummyApp) OpenFile(name string) error { d.opened = name; return nil }
@@ -17,6 +18,7 @@ func (d *dummyApp) Run(tcell.Screen)           {}
 func (d *dummyApp) Settings() Settings         { return NewSettings() }
 func (d *dummyApp) GetStatusBar() StatusBar    { return d.sb }
 func (d *dummyApp) LoadSettings(string) error  { return nil }
+func (d *dummyApp) GetCurrentView() View       { return d.view }
 
 type stubStatusBar struct{}
 
@@ -35,7 +37,7 @@ func TestCommandOpenExecute(t *testing.T) {
 	screen := tcell.NewSimulationScreen("")
 	screen.Init()
 	cmd := &CommandOpen{}
-	if _, err := cmd.Execute(d, nil, screen, nil); err != nil {
+	if _, err := cmd.Execute(d, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if d.opened != "test.txt" {
@@ -46,12 +48,13 @@ func TestCommandOpenExecute(t *testing.T) {
 func TestCommandMoveExecute(t *testing.T) {
 	b, _ := NewBuffer("")
 	v := NewView(b)
+	d := &dummyApp{view: v}
 	screen := tcell.NewSimulationScreen("")
 	screen.Init()
 	screen.SetSize(10, 10)
 	v.SetCursor(0, 0)
 	c := &CommandMove{dRow: 1, dCol: 1}
-	if _, err := c.Execute(nil, v, screen, nil); err != nil {
+	if _, err := c.Execute(d, nil); err != nil {
 		t.Fatalf("error: %v", err)
 	}
 	r, c2 := v.Cursor()
@@ -66,10 +69,11 @@ func TestCommandSaveExecute(t *testing.T) {
 	defer os.Remove(tmp.Name())
 	b, _ := NewBuffer(tmp.Name())
 	v := NewView(b.Insert(0, "data"))
+	d := &dummyApp{view: v}
 	screen := tcell.NewSimulationScreen("")
 	screen.Init()
 	cmd := &CommandSave{}
-	if _, err := cmd.Execute(nil, v, screen, nil); err != nil {
+	if _, err := cmd.Execute(d, nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	data, _ := os.ReadFile(tmp.Name())
