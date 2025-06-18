@@ -2,6 +2,7 @@ package app
 
 import (
 	"os"
+	"path/filepath"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -29,6 +30,7 @@ type app struct {
 	tabBar      TabBar
 	currentView int
 	settings    Settings
+	lsps        map[string]*lspClient
 }
 
 func (a *app) OpenFile(filename string) error {
@@ -55,6 +57,8 @@ func (a *app) OpenFile(filename string) error {
 		a.views = append(a.views, view)  // add the new view to the end of the list
 		a.currentView = len(a.views) - 1 // set the current view to the new one
 	}
+
+	a.startLSP(filename)
 
 	return nil
 }
@@ -261,5 +265,22 @@ func NewApp() (App, error) {
 		tabBar:      NewTabBar(),
 		currentView: 0,
 		settings:    NewSettings(),
+		lsps:        make(map[string]*lspClient),
 	}, nil
+}
+
+func (a *app) startLSP(filename string) {
+	ext := filepath.Ext(filename)
+
+	// TODO: Add support for other languages, and LSP mapping in the editor settings
+	if ext == ".go" {
+		client, err := newLSPClient("gopls", filename)
+		if err != nil {
+			return
+		}
+		if a.lsps == nil {
+			panic("lsps is nil") // this is a bug not an error!
+		}
+		a.lsps[filename] = client
+	}
 }
