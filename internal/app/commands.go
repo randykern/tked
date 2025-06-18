@@ -7,6 +7,18 @@ type CommandExit struct{}
 func (c *CommandExit) Name() string { return "exit" }
 
 func (c *CommandExit) Execute(app App, ev *tcell.EventKey) (bool, error) {
+	for _, view := range app.Views() {
+		if view.Buffer().IsDirty() {
+			answer, ok := app.GetStatusBar().Input("You have unsaved changes. Quit anyway? (y/n): ")
+			if !ok {
+				return false, nil
+			}
+			if answer == "y" {
+				return true, nil
+			}
+			return false, nil
+		}
+	}
 	return true, nil
 }
 

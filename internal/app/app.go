@@ -13,12 +13,14 @@ type App interface {
 	Run(screen tcell.Screen)
 	// Settings returns the editor settings instance.
 	Settings() Settings
-	// GetStatusBar returns the status bar instance.
-	GetStatusBar() StatusBar
 	// LoadSettings loads the settings from the given file.
 	LoadSettings(filename string) error
+	// GetStatusBar returns the status bar instance.
+	GetStatusBar() StatusBar
 	// GetCurrentView returns the current view.
 	GetCurrentView() View
+	// GetViews returns all the views in the application.
+	Views() []View
 }
 
 type app struct {
@@ -29,15 +31,33 @@ type app struct {
 	settings    Settings
 }
 
-func (a *app) GetCurrentView() View {
-	if a.currentView < 0 || a.currentView >= len(a.views) || a.views[a.currentView] == nil {
-		panic("no active view") // this is a bug not an error!
+func (a *app) OpenFile(filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	view, err := NewViewFromReader(filename, file)
+	if err != nil {
+		return err
 	}
 
-	return a.views[a.currentView]
-}
+	// Resize the view to match the current view's size
+	width, height := a.GetCurrentView().Size()
+	view.Resize(height, width)
 
-func (a *app) Settings() Settings { return a.settings }
+	// If the current view is empty, replace it with the new one
+	currentView := a.GetCurrentView()
+	if currentView.Buffer().GetFilename() == "" && !currentView.Buffer().IsDirty() {
+		a.views[a.currentView] = view // replace the current view with the new one
+	} else {
+		a.views = append(a.views, view)  // add the new view to the end of the list
+		a.currentView = len(a.views) - 1 // set the current view to the new one
+	}
+
+	return nil
+}
 
 func (a *app) Run(screen tcell.Screen) {
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
@@ -96,6 +116,35 @@ eventLoop:
 		a.statusBar.Draw(a.GetCurrentView())
 	}
 }
+func (a *app) Settings() Settings { return a.settings }
+
+func (a *app) LoadSettings(filename string) error {
+	settings, err := NewSettingsFromFile(filename)
+	if err != nil {
+		return err
+	}
+	a.settings = settings
+
+	return nil
+}
+
+func (a *app) GetStatusBar() StatusBar {
+	if a.statusBar == nil {
+		panic("status bar is nil") // this is a bug not an error!
+	}
+
+	return a.statusBar
+}
+
+func (a *app) GetCurrentView() View {
+	if a.currentView < 0 || a.currentView >= len(a.views) || a.views[a.currentView] == nil {
+		panic("no active view") // this is a bug not an error!
+	}
+
+	return a.views[a.currentView]
+}
+
+func (a *app) Views() []View { return a.views }
 
 func (a *app) handleResize(screen tcell.Screen) {
 	// TODO: This will have to be smarter about resizing views- not all are full screen
@@ -155,52 +204,6 @@ func (a *app) handleMouse(ev *tcell.EventMouse) {
 	case tcell.WheelDown:
 		scrollBy(view, 1)
 	}
-}
-
-func (a *app) OpenFile(filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	view, err := NewViewFromReader(filename, file)
-	if err != nil {
-		return err
-	}
-
-	// Resize the view to match the current view's size
-	width, height := a.GetCurrentView().Size()
-	view.Resize(height, width)
-
-	// If the current view is empty, replace it with the new one
-	currentView := a.GetCurrentView()
-	if currentView.Buffer().GetFilename() == "" && !currentView.Buffer().IsDirty() {
-		a.views[a.currentView] = view // replace the current view with the new one
-	} else {
-		a.views = append(a.views, view)  // add the new view to the end of the list
-		a.currentView = len(a.views) - 1 // set the current view to the new one
-	}
-
-	return nil
-}
-
-func (a *app) GetStatusBar() StatusBar {
-	if a.statusBar == nil {
-		panic("status bar is nil") // this is a bug not an error!
-	}
-
-	return a.statusBar
-}
-
-func (a *app) LoadSettings(filename string) error {
-	settings, err := NewSettingsFromFile(filename)
-	if err != nil {
-		return err
-	}
-	a.settings = settings
-
-	return nil
 }
 
 func NewApp() (App, error) {

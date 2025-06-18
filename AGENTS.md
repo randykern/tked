@@ -26,6 +26,7 @@ This repo implements **tked**, a simple command line text editor written in Go. 
 - keybinding.go implements configurable keybindings to bind key events to Command implementations
 - settings.go implements editor configuration and settings
 - statusbar.go implements the status bar for the overall application
+- tabbar.go implements the tab bar for the overall application
 - view.go implements the View interface and view structure, the view in the application architecture
 
 ## Testing and Formatting

@@ -24,7 +24,7 @@ tked [file]
 
 Configuration is read from `~/.tked.toml` if it exists.
 
-### Keybindings
+### Default Keybindings
 
 - `Esc`: Exit the editor
 - `Up`: Move up a line
@@ -35,7 +35,7 @@ Configuration is read from `~/.tked.toml` if it exists.
 - `Ctrl+R`: Redo the last undone edit
 - `Ctrl+S`: Save the current buffer
 - `Ctrl+O`: Open a new file
-- A `*` in the status line indicates the file has unsaved changes
+
 
 ## Running Tests
 
