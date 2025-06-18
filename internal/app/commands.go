@@ -49,7 +49,7 @@ func (c *CommandSave) Execute(app App, ev *tcell.EventKey) (bool, error) {
 				return false, nil
 			}
 		}
-		if err := view.Save(""); err != nil {
+		if err := view.Save(filename); err != nil {
 			return false, err
 		}
 	}
