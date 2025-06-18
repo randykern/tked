@@ -15,11 +15,11 @@ type StatusBar interface {
 	// Message displays a message on the status bar.
 	Message(msg string)
 	// Messagef formats the message and displays it on the status bar.
-	Messagef(format string, args ...interface{})
+	Messagef(format string, args ...any)
 	// Error displays an error message on the status bar until a key is pressed.
 	Error(msg string)
 	// Errorf formats the error message and displays it until a key is pressed.
-	Errorf(format string, args ...interface{})
+	Errorf(format string, args ...any)
 	// Input displays a prompt on the status bar and returns the entered value.
 	// The boolean return is false if the prompt was cancelled with Esc.
 	Input(prompt string) (string, bool)
@@ -57,8 +57,8 @@ func (sb *statusBar) Draw(v View) {
 	}
 
 	width, height := sb.screen.Size()
-	sb.drawText(0, height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), filename+dirty)
-	sb.drawText(len(filename)+len(dirty), height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), cursor)
+	sb.drawText(0, height-1, width-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), filename+dirty)
+	sb.drawText(len(filename)+len(dirty), height-1, width-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), cursor)
 }
 
 // Message displays a message on the status bar.
@@ -67,7 +67,7 @@ func (sb *statusBar) Message(msg string) {
 }
 
 // Messagef formats the message and displays it on the status bar.
-func (sb *statusBar) Messagef(format string, args ...interface{}) {
+func (sb *statusBar) Messagef(format string, args ...any) {
 	sb.Message(fmt.Sprintf(format, args...))
 }
 
@@ -77,7 +77,7 @@ func (sb *statusBar) Error(msg string) {
 }
 
 // Errorf formats the error message and displays it until a key is pressed.
-func (sb *statusBar) Errorf(format string, args ...interface{}) {
+func (sb *statusBar) Errorf(format string, args ...any) {
 	sb.Error(fmt.Sprintf(format, args...))
 }
 
@@ -89,10 +89,10 @@ func (sb *statusBar) Input(prompt string) (string, bool) {
 	for {
 		width, height := sb.screen.Size()
 		// Clear the status line
-		for x := 0; x < width; x++ {
+		for x := range width {
 			sb.screen.SetContent(x, height-1, ' ', nil, tcell.StyleDefault)
 		}
-		sb.drawText(0, height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), prompt+string(input))
+		sb.drawText(0, height-1, width-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), prompt+string(input))
 		sb.screen.Show()
 
 		ev := sb.screen.PollEvent()
@@ -119,7 +119,7 @@ func (sb *statusBar) Input(prompt string) (string, bool) {
 func (sb *statusBar) drawPrompt(msg string, style tcell.Style) {
 	for {
 		width, height := sb.screen.Size()
-		sb.drawText(0, height-1, width-1, height-1, style, msg)
+		sb.drawText(0, height-1, width-1, style, msg)
 		sb.screen.Show()
 
 		// TODO: this is a hack to get the message to display for a short time
@@ -134,7 +134,7 @@ func (sb *statusBar) drawPrompt(msg string, style tcell.Style) {
 	}
 }
 
-func (sb *statusBar) drawText(x1, y1, x2, y2 int, style tcell.Style, text string) {
+func (sb *statusBar) drawText(x1, y1, x2 int, style tcell.Style, text string) {
 	row := y1
 	col := x1
 	for _, r := range text {
