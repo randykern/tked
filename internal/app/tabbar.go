@@ -11,11 +11,17 @@ type TabBar interface {
 	// ViewIndexAt returns the view index for the given screen coordinates.
 	// The boolean return will be false if the coordinates are outside any tab.
 	ViewIndexAt(x, y int) (int, bool)
+	// CloseIndexAt returns the index of the view close button at the given
+	// coordinates. The boolean return will be false if the coordinates are
+	// outside any close button.
+	CloseIndexAt(x, y int) (int, bool)
 }
 
 type tabPosition struct {
-	start int
-	end   int
+	start      int
+	end        int
+	closeStart int
+	closeEnd   int
 }
 
 type tabBar struct {
@@ -46,8 +52,11 @@ func (tb *tabBar) Draw(views []View, current int) {
 			title += "*"
 		}
 
-		// add spaces around title
+		// add spaces around title and include a close button
 		text := " " + title + " "
+		titleRunes := []rune(text)
+		closeStart := col + len(titleRunes)
+		text += "X "
 		start := col
 		for _, r := range text {
 			if col >= width {
@@ -62,7 +71,7 @@ func (tb *tabBar) Draw(views []View, current int) {
 			tb.screen.SetContent(col, 0, r, nil, style)
 			col++
 		}
-		tb.tabPositions[i] = tabPosition{start: start, end: col}
+		tb.tabPositions[i] = tabPosition{start: start, end: col, closeStart: closeStart, closeEnd: closeStart + 1}
 		if col >= width {
 			break
 		}
@@ -80,6 +89,18 @@ func (tb *tabBar) ViewIndexAt(x, y int) (int, bool) {
 	}
 	for i, pos := range tb.tabPositions {
 		if x >= pos.start && x < pos.end {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
+func (tb *tabBar) CloseIndexAt(x, y int) (int, bool) {
+	if y != 0 {
+		return -1, false
+	}
+	for i, pos := range tb.tabPositions {
+		if x >= pos.closeStart && x < pos.closeEnd {
 			return i, true
 		}
 	}

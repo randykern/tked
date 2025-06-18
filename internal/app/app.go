@@ -189,6 +189,10 @@ func (a *app) handleMouse(ev *tcell.EventMouse) {
 	switch ev.Buttons() {
 	case tcell.Button1:
 		if a.tabBar != nil {
+			if idx, ok := a.tabBar.CloseIndexAt(x, y); ok {
+				a.closeView(idx)
+				return
+			}
 			if idx, ok := a.tabBar.ViewIndexAt(x, y); ok {
 				if idx >= 0 && idx < len(a.views) {
 					a.currentView = idx
@@ -203,6 +207,48 @@ func (a *app) handleMouse(ev *tcell.EventMouse) {
 		scrollBy(view, -1)
 	case tcell.WheelDown:
 		scrollBy(view, 1)
+	}
+}
+
+func (a *app) closeView(idx int) {
+	if idx < 0 || idx >= len(a.views) {
+		return
+	}
+
+	v := a.views[idx]
+	if v.Buffer().IsDirty() {
+		answer, ok := a.statusBar.Input("Save changes? (y/n): ")
+		if !ok {
+			return
+		}
+		if answer == "y" {
+			filename := v.Buffer().GetFilename()
+			if filename == "" {
+				var ok bool
+				filename, ok = a.statusBar.Input("Save as: ")
+				if !ok {
+					return
+				}
+			}
+			if err := v.Save(filename); err != nil {
+				a.statusBar.Errorf("Error saving file: %v", err)
+				return
+			}
+		} else if answer != "n" {
+			return
+		}
+	}
+
+	a.views = append(a.views[:idx], a.views[idx+1:]...)
+	if len(a.views) == 0 {
+		a.views = []View{NewView("", nil)}
+		a.currentView = 0
+		return
+	}
+	if a.currentView >= len(a.views) {
+		a.currentView = len(a.views) - 1
+	} else if idx <= a.currentView && a.currentView > 0 {
+		a.currentView--
 	}
 }
 
