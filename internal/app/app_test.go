@@ -56,3 +56,32 @@ func TestHandleKeyEnter(t *testing.T) {
 		t.Fatalf("expected newline got %q", got)
 	}
 }
+
+func TestHandleMouseTabClick(t *testing.T) {
+	commands = make(map[string]Command)
+	registerCommands()
+	aInt, err := NewApp()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	a := aInt.(*app)
+	screen := tcell.NewSimulationScreen("")
+	screen.Init()
+	screen.SetSize(20, 5)
+	a.statusBar.SetScreen(screen)
+	a.tabBar.SetScreen(screen)
+
+	a.views = append(a.views, NewView("second.txt", nil))
+	for _, v := range a.views {
+		v.Resize(4, 20)
+	}
+	a.tabBar.Draw(a.views, a.currentView)
+
+	tb := a.tabBar.(*tabBar)
+	x := tb.tabPositions[1].start
+	ev := tcell.NewEventMouse(x, 0, tcell.Button1, tcell.ModNone)
+	a.handleMouse(ev)
+	if a.currentView != 1 {
+		t.Fatalf("expected current view 1 got %d", a.currentView)
+	}
+}

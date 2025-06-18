@@ -24,6 +24,7 @@ type App interface {
 type app struct {
 	views       []View
 	statusBar   StatusBar
+	tabBar      TabBar
 	currentView int
 	settings    Settings
 }
@@ -50,15 +51,21 @@ func (a *app) Run(screen tcell.Screen) {
 	// Get the initial screen size and update each view to match
 	width, height := screen.Size()
 	for _, view := range a.views {
-		view.Resize(height, width)
+		view.Resize(height-1, width)
 	}
 
 	// Draw initial status bar
 	a.statusBar.SetScreen(screen) // status bar needs to know the screen to draw on
 	a.statusBar.Draw(a.GetCurrentView())
 
+	// Draw initial tab bar
+	if a.tabBar != nil {
+		a.tabBar.SetScreen(screen)
+		a.tabBar.Draw(a.views, a.currentView)
+	}
+
 	// Draw initial view
-	a.GetCurrentView().Draw(screen, a.settings.TabWidth(), 0, 0)
+	a.GetCurrentView().Draw(screen, a.settings.TabWidth(), 1, 0)
 
 	// Event loop
 eventLoop:
@@ -82,7 +89,10 @@ eventLoop:
 		}
 
 		screen.Clear()
-		a.GetCurrentView().Draw(screen, a.settings.TabWidth(), 0, 0)
+		if a.tabBar != nil {
+			a.tabBar.Draw(a.views, a.currentView)
+		}
+		a.GetCurrentView().Draw(screen, a.settings.TabWidth(), 1, 0)
 		a.statusBar.Draw(a.GetCurrentView())
 	}
 }
@@ -91,7 +101,11 @@ func (a *app) handleResize(screen tcell.Screen) {
 	// TODO: This will have to be smarter about resizing views- not all are full screen
 	width, height := screen.Size()
 	for _, view := range a.views {
-		view.Resize(height, width)
+		view.Resize(height-1, width)
+	}
+
+	if a.tabBar != nil {
+		a.tabBar.Draw(a.views, a.currentView)
 	}
 
 	screen.Sync()
@@ -125,8 +139,17 @@ func (a *app) handleMouse(ev *tcell.EventMouse) {
 
 	switch ev.Buttons() {
 	case tcell.Button1:
+		if a.tabBar != nil {
+			if idx, ok := a.tabBar.ViewIndexAt(x, y); ok {
+				if idx >= 0 && idx < len(a.views) {
+					a.currentView = idx
+					return
+				}
+			}
+		}
+
 		top, left := view.TopLeft()
-		view.SetCursor(top+y, left+x)
+		view.SetCursor(top+y-1, left+x)
 	case tcell.WheelUp:
 		scrollBy(view, -1)
 	case tcell.WheelDown:
@@ -186,6 +209,7 @@ func NewApp() (App, error) {
 	return &app{
 		views:       []View{NewView("", nil)},
 		statusBar:   NewStatusBar(),
+		tabBar:      NewTabBar(),
 		currentView: 0,
 		settings:    NewSettings(),
 	}, nil
