@@ -36,60 +36,6 @@ func (a *app) GetCurrentView() View {
 
 func (a *app) Settings() Settings { return a.settings }
 
-func drawView(v View, s tcell.Screen, tabWidth int) {
-	screenWidth, screenHeight := s.Size()
-
-	index := 0
-
-	viewTop, viewLeft := v.TopLeft()
-
-	bufferRow := 0
-	bufferCol := 0
-
-	// TODO: MB characeter sets
-
-	for {
-		r, ok := v.Buffer().Contents().Index(index)
-		if !ok {
-			break
-		}
-		index++
-
-		// Instead of special logic for text that shouldn't be drawn, we will always just move forward
-		// a character at a time, but suppress the drawing of the character if it is outside
-		// the viewport.
-
-		if r == '\n' {
-			bufferRow++
-			bufferCol = 0
-			continue
-		} else if r == '\t' {
-			if tabWidth <= 0 {
-				tabWidth = 4
-			}
-			if bufferCol%tabWidth == 0 {
-				bufferCol += tabWidth
-			} else {
-				bufferCol += tabWidth - bufferCol%tabWidth
-			}
-			continue
-		}
-
-		if bufferRow >= viewTop && bufferCol >= viewLeft && bufferRow < viewTop+screenHeight-1 && bufferCol < viewLeft+screenWidth-1 {
-			s.SetContent(bufferCol-viewLeft, bufferRow-viewTop, rune(r), nil, tcell.StyleDefault)
-		}
-
-		bufferCol++
-	}
-
-	cursorRow, cursorCol := v.Cursor()
-	if cursorRow >= viewTop && cursorRow < viewTop+screenHeight-1 && cursorCol >= viewLeft && cursorCol < viewLeft+screenWidth-1 {
-		s.ShowCursor(cursorCol-viewLeft, cursorRow-viewTop)
-	} else {
-		s.HideCursor()
-	}
-}
-
 func (a *app) Run(screen tcell.Screen) {
 	defStyle := tcell.StyleDefault.Background(tcell.ColorReset).Foreground(tcell.ColorReset)
 
@@ -110,7 +56,7 @@ func (a *app) Run(screen tcell.Screen) {
 	a.statusBar.Draw(a.GetCurrentView())
 
 	// Draw initial view
-	drawView(a.GetCurrentView(), screen, a.settings.TabWidth())
+	a.GetCurrentView().Draw(screen, a.settings.TabWidth(), 0, 0)
 
 	// Event loop
 eventLoop:
@@ -134,7 +80,7 @@ eventLoop:
 		}
 
 		screen.Clear()
-		drawView(a.GetCurrentView(), screen, a.settings.TabWidth())
+		a.GetCurrentView().Draw(screen, a.settings.TabWidth(), 0, 0)
 		a.statusBar.Draw(a.GetCurrentView())
 	}
 }

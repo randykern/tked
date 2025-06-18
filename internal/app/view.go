@@ -1,6 +1,10 @@
 package app
 
-import "tked/internal/rope"
+import (
+	"tked/internal/rope"
+
+	"github.com/gdamore/tcell/v2"
+)
 
 type View interface {
 	// Buffer returns the buffer that the view is displaying.
@@ -28,6 +32,9 @@ type View interface {
 	Undo()
 	// Redo reapplies an undone editing action.
 	Redo()
+	// Draw renders the view's contents on the provided screen.
+	// topOffset and leftOffset specify where to start drawing on the screen.
+	Draw(screen tcell.Screen, tabWidth, topOffset, leftOffset int)
 }
 
 type viewState struct {
@@ -264,5 +271,59 @@ func ensureCursorVisible(v *view) {
 		s.left = s.cursorCol
 	} else if s.cursorCol >= s.left+v.width-1 {
 		s.left = s.cursorCol - (v.width - 2)
+	}
+}
+
+func (v *view) Draw(screen tcell.Screen, tabWidth, topOffset, leftOffset int) {
+	screenWidth, screenHeight := screen.Size()
+
+	index := 0
+
+	viewTop, viewLeft := v.TopLeft()
+
+	bufferRow := 0
+	bufferCol := 0
+
+	// TODO: MB characeter sets
+
+	for {
+		r, ok := v.Buffer().Contents().Index(index)
+		if !ok {
+			break
+		}
+		index++
+
+		// Instead of special logic for text that shouldn't be drawn, we will always just move forward
+		// a character at a time, but suppress the drawing of the character if it is outside
+		// the viewport.
+
+		if r == '\n' {
+			bufferRow++
+			bufferCol = 0
+			continue
+		} else if r == '\t' {
+			if tabWidth <= 0 {
+				tabWidth = 4
+			}
+			if bufferCol%tabWidth == 0 {
+				bufferCol += tabWidth
+			} else {
+				bufferCol += tabWidth - bufferCol%tabWidth
+			}
+			continue
+		}
+
+		if bufferRow >= viewTop && bufferCol >= viewLeft && bufferRow < viewTop+screenHeight-1 && bufferCol < viewLeft+screenWidth-1 {
+			screen.SetContent(leftOffset+bufferCol-viewLeft, topOffset+bufferRow-viewTop, rune(r), nil, tcell.StyleDefault)
+		}
+
+		bufferCol++
+	}
+
+	cursorRow, cursorCol := v.Cursor()
+	if cursorRow >= viewTop && cursorRow < viewTop+screenHeight-1 && cursorCol >= viewLeft && cursorCol < viewLeft+screenWidth-1 {
+		screen.ShowCursor(leftOffset+cursorCol-viewLeft, topOffset+cursorRow-viewTop)
+	} else {
+		screen.HideCursor()
 	}
 }
