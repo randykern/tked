@@ -50,10 +50,10 @@ type CommandOpen struct{}
 func (c *CommandOpen) Name() string { return "open" }
 
 func (c *CommandOpen) Execute(app App, view View, screen tcell.Screen, ev *tcell.EventKey) (bool, error) {
-	filename, ok := app.GetStatusBar().Input(screen, "Open file: ")
+	filename, ok := app.GetStatusBar().Input("Open file: ")
 	if ok && filename != "" {
 		if err := app.OpenFile(filename); err != nil {
-			app.GetStatusBar().Errorf(screen, "Error opening file: %v", err)
+			app.GetStatusBar().Errorf("Error opening file: %v", err)
 		}
 	}
 

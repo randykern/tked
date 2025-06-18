@@ -11,11 +11,12 @@ func TestStatusBarInputEnter(t *testing.T) {
 	screen.Init()
 	screen.SetSize(20, 5)
 	sb := NewStatusBar()
+	sb.SetScreen(screen)
 	done := make(chan struct{})
 	var val string
 	var ok bool
 	go func() {
-		val, ok = sb.Input(screen, "file: ")
+		val, ok = sb.Input("file: ")
 		close(done)
 	}()
 	screen.InjectKey(tcell.KeyRune, 't', tcell.ModNone)
@@ -32,11 +33,12 @@ func TestStatusBarInputEsc(t *testing.T) {
 	screen.Init()
 	screen.SetSize(20, 5)
 	sb := NewStatusBar()
+	sb.SetScreen(screen)
 	done := make(chan struct{})
 	var val string
 	var ok bool
 	go func() {
-		val, ok = sb.Input(screen, "file: ")
+		val, ok = sb.Input("file: ")
 		close(done)
 	}()
 	screen.InjectKey(tcell.KeyRune, 'a', tcell.ModNone)

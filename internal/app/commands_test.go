@@ -20,12 +20,13 @@ func (d *dummyApp) LoadSettings(string) error  { return nil }
 
 type stubStatusBar struct{}
 
-func (stubStatusBar) Draw(tcell.Screen, View)                       {}
-func (stubStatusBar) Message(tcell.Screen, string)                  {}
-func (stubStatusBar) Messagef(tcell.Screen, string, ...interface{}) {}
-func (stubStatusBar) Error(tcell.Screen, string)                    {}
-func (stubStatusBar) Errorf(tcell.Screen, string, ...interface{})   {}
-func (stubStatusBar) Input(tcell.Screen, string) (string, bool)     { return "test.txt", true }
+func (stubStatusBar) SetScreen(tcell.Screen)          {}
+func (stubStatusBar) Draw(View)                       {}
+func (stubStatusBar) Message(string)                  {}
+func (stubStatusBar) Messagef(string, ...interface{}) {}
+func (stubStatusBar) Error(string)                    {}
+func (stubStatusBar) Errorf(string, ...interface{})   {}
+func (stubStatusBar) Input(string) (string, bool)     { return "test.txt", true }
 
 func TestCommandOpenExecute(t *testing.T) {
 	commands = make(map[string]Command)

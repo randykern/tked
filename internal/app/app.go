@@ -104,7 +104,8 @@ func (a *app) Run(screen tcell.Screen) {
 	}
 
 	// Draw initial status bar
-	a.statusBar.Draw(screen, a.getCurrentView())
+	a.statusBar.SetScreen(screen) // status bar needs to know the screen to draw on
+	a.statusBar.Draw(a.getCurrentView())
 
 	// Draw initial view
 	drawView(a.getCurrentView(), screen, a.settings.TabWidth())
@@ -132,7 +133,7 @@ eventLoop:
 
 		screen.Clear()
 		drawView(a.getCurrentView(), screen, a.settings.TabWidth())
-		a.statusBar.Draw(screen, a.getCurrentView())
+		a.statusBar.Draw(a.getCurrentView())
 	}
 }
 
@@ -159,7 +160,7 @@ func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
 		if command != nil {
 			ret, err := command.Execute(a, a.getCurrentView(), screen, ev)
 			if err != nil {
-				a.statusBar.Errorf(screen, "Error executing command: %v", err)
+				a.statusBar.Errorf("Error executing command: %v", err)
 			}
 			return ret
 		}

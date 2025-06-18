@@ -8,30 +8,37 @@ import (
 
 // StatusBar describes the behaviour of a status bar component.
 type StatusBar interface {
-	// Draw renders the status bar for the provided view onto the provided screen.
-	Draw(s tcell.Screen, v View)
+	// SetScreen sets the screen that the status bar will draw on.
+	SetScreen(s tcell.Screen)
+	// Draw renders the status bar for the provided view.
+	Draw(v View)
 	// Message displays a message on the status bar.
-	Message(s tcell.Screen, msg string)
+	Message(msg string)
 	// Messagef formats the message and displays it on the status bar.
-	Messagef(s tcell.Screen, format string, args ...interface{})
+	Messagef(format string, args ...interface{})
 	// Error displays an error message on the status bar until a key is pressed.
-	Error(s tcell.Screen, msg string)
+	Error(msg string)
 	// Errorf formats the error message and displays it until a key is pressed.
-	Errorf(s tcell.Screen, format string, args ...interface{})
+	Errorf(format string, args ...interface{})
 	// Input displays a prompt on the status bar and returns the entered value.
 	// The boolean return is false if the prompt was cancelled with Esc.
-	Input(s tcell.Screen, prompt string) (string, bool)
+	Input(prompt string) (string, bool)
 }
 
-type statusBar struct{}
+type statusBar struct {
+	screen tcell.Screen
+}
 
-// NewStatusBar creates a new status bar instance.
-func NewStatusBar() StatusBar {
-	return &statusBar{}
+// SetScreen sets the screen that the status bar will draw on.
+func (sb *statusBar) SetScreen(s tcell.Screen) {
+	if s == nil {
+		panic("screen is nil")
+	}
+	sb.screen = s
 }
 
 // Draw renders the current status bar.
-func (sb *statusBar) Draw(s tcell.Screen, v View) {
+func (sb *statusBar) Draw(v View) {
 	filename := "Untitled"
 	cursor := ": 1 1"
 	dirty := ""
@@ -49,46 +56,46 @@ func (sb *statusBar) Draw(s tcell.Screen, v View) {
 		}
 	}
 
-	width, height := s.Size()
-	sb.drawText(s, 0, height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), filename+dirty)
-	sb.drawText(s, len(filename)+len(dirty), height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), cursor)
+	width, height := sb.screen.Size()
+	sb.drawText(0, height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), filename+dirty)
+	sb.drawText(len(filename)+len(dirty), height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), cursor)
 }
 
 // Message displays a message on the status bar.
-func (sb *statusBar) Message(s tcell.Screen, msg string) {
-	sb.drawPrompt(s, msg, tcell.StyleDefault.Foreground(tcell.ColorWhite))
+func (sb *statusBar) Message(msg string) {
+	sb.drawPrompt(msg, tcell.StyleDefault.Foreground(tcell.ColorWhite))
 }
 
 // Messagef formats the message and displays it on the status bar.
-func (sb *statusBar) Messagef(s tcell.Screen, format string, args ...interface{}) {
-	sb.Message(s, fmt.Sprintf(format, args...))
+func (sb *statusBar) Messagef(format string, args ...interface{}) {
+	sb.Message(fmt.Sprintf(format, args...))
 }
 
 // Error displays an error message on the status bar until a key is pressed.
-func (sb *statusBar) Error(s tcell.Screen, msg string) {
-	sb.drawPrompt(s, msg, tcell.StyleDefault.Foreground(tcell.ColorRed))
+func (sb *statusBar) Error(msg string) {
+	sb.drawPrompt(msg, tcell.StyleDefault.Foreground(tcell.ColorRed))
 }
 
 // Errorf formats the error message and displays it until a key is pressed.
-func (sb *statusBar) Errorf(s tcell.Screen, format string, args ...interface{}) {
-	sb.Error(s, fmt.Sprintf(format, args...))
+func (sb *statusBar) Errorf(format string, args ...interface{}) {
+	sb.Error(fmt.Sprintf(format, args...))
 }
 
 // Input displays a prompt on the status bar and collects user input. The
 // second return value will be false if the user pressed Esc to cancel the
 // prompt.
-func (sb *statusBar) Input(s tcell.Screen, prompt string) (string, bool) {
+func (sb *statusBar) Input(prompt string) (string, bool) {
 	input := []rune{}
 	for {
-		width, height := s.Size()
+		width, height := sb.screen.Size()
 		// Clear the status line
 		for x := 0; x < width; x++ {
-			s.SetContent(x, height-1, ' ', nil, tcell.StyleDefault)
+			sb.screen.SetContent(x, height-1, ' ', nil, tcell.StyleDefault)
 		}
-		sb.drawText(s, 0, height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), prompt+string(input))
-		s.Show()
+		sb.drawText(0, height-1, width-1, height-1, tcell.StyleDefault.Foreground(tcell.ColorWhite), prompt+string(input))
+		sb.screen.Show()
 
-		ev := s.PollEvent()
+		ev := sb.screen.PollEvent()
 		switch ev := ev.(type) {
 		case *tcell.EventKey:
 			switch ev.Key() {
@@ -104,41 +111,44 @@ func (sb *statusBar) Input(s tcell.Screen, prompt string) (string, bool) {
 				input = append(input, ev.Rune())
 			}
 		case *tcell.EventResize:
-			s.Sync()
+			sb.screen.Sync()
 		}
 	}
 }
 
-func (sb *statusBar) drawPrompt(s tcell.Screen, msg string, style tcell.Style) {
+func (sb *statusBar) drawPrompt(msg string, style tcell.Style) {
 	for {
-		width, height := s.Size()
-		sb.drawText(s, 0, height-1, width-1, height-1, style, msg)
-		s.Show()
+		width, height := sb.screen.Size()
+		sb.drawText(0, height-1, width-1, height-1, style, msg)
+		sb.screen.Show()
 
 		// TODO: this is a hack to get the message to display for a short time
 		// and then disappear. It should be replaced with a more robust solution.
-		ev := s.PollEvent()
+		ev := sb.screen.PollEvent()
 		switch ev.(type) {
 		case *tcell.EventKey, *tcell.EventMouse:
 			return
 		case *tcell.EventResize:
-			s.Sync()
+			sb.screen.Sync()
 		}
 	}
 }
 
-func (sb *statusBar) drawText(s tcell.Screen, x1, y1, x2, y2 int, style tcell.Style, text string) {
+func (sb *statusBar) drawText(x1, y1, x2, y2 int, style tcell.Style, text string) {
 	row := y1
 	col := x1
 	for _, r := range text {
-		s.SetContent(col, row, r, nil, style)
+		sb.screen.SetContent(col, row, r, nil, style)
 		col++
 		if col >= x2 {
-			row++
-			col = x1
-		}
-		if row > y2 {
 			break
 		}
+	}
+}
+
+// NewStatusBar creates a new status bar instance.
+func NewStatusBar() StatusBar {
+	return &statusBar{
+		screen: nil,
 	}
 }
