@@ -1,62 +1,76 @@
 package app
 
 import (
-	"tked/internal/rope"
+	"io"
+	"os"
+	"path/filepath"
 
 	"github.com/gdamore/tcell/v2"
+
+	"tked/internal/rope"
 )
 
 type View interface {
-	// Buffer returns the buffer that the view is displaying.
+	// Returns the buffer in this view.
 	Buffer() Buffer
+
+	// TODO: Is this needed outside of drawing?
 	// Size returns the number of rows and columns visible in the view.
 	Size() (int, int)
 	// Resize updates the number of rows and columns visible in the view.
 	Resize(rows, cols int)
+
 	// TopLeft returns the top row and left column offsets.
 	TopLeft() (int, int)
 	// SetTopLeft updates the view's top row and left column offsets.
 	SetTopLeft(top, left int)
+
 	// Cursor returns the current cursor position as row and column indexes.
 	Cursor() (int, int)
 	// SetCursor updates the current cursor position and moves the viewport
 	// to ensure the cursor is visible.
 	SetCursor(row, col int)
+
+	// TODO: We may need a way to register a function on a buffer change
+	// That way we don't need Undo/Redo wrappers etc., and ensureVisible
+	// can always be called in the hook function.
+
 	// InsertRune inserts a rune into the buffer at the cursor position.
 	InsertRune(r rune)
 	// DeleteRune deletes a rune. When forward is true it deletes the rune
 	// under the cursor (Delete key behaviour). Otherwise it deletes the
 	// rune before the cursor (Backspace behaviour).
 	DeleteRune(forward bool)
+
 	// Undo reverts the last editing action.
 	Undo()
 	// Redo reapplies an undone editing action.
 	Redo()
+
 	// Draw renders the view's contents on the provided screen.
 	// topOffset and leftOffset specify where to start drawing on the screen.
 	Draw(screen tcell.Screen, tabWidth, topOffset, leftOffset int)
-}
 
-type viewState struct {
-	buffer    Buffer
-	top       int
-	left      int
-	cursorRow int
-	cursorCol int
+	// Save writes the buffer contents to disk using the filename. If fileanme
+	// is empty, save uses the existing filename if set, otherwise it returns an error.
+	Save(filename string) error
 }
 
 type view struct {
-	states []viewState
-	curr   int
+	buffer Buffer
 	width  int
 	height int
+	top    int
+	left   int
+}
+
+type cursor struct {
+	row int
+	col int
 }
 
 func (v *view) Buffer() Buffer {
-	if len(v.states) == 0 {
-		return nil
-	}
-	return v.states[v.curr].buffer
+	return v.buffer
 }
 
 func (v *view) Size() (int, int) {
@@ -69,209 +83,92 @@ func (v *view) Resize(rows, cols int) {
 }
 
 func (v *view) TopLeft() (int, int) {
-	if len(v.states) == 0 {
-		return 0, 0
-	}
-	s := v.states[v.curr]
-	return s.top, s.left
+	return v.top, v.left
 }
 
 func (v *view) SetTopLeft(top, left int) {
-	if len(v.states) == 0 {
-		return
-	}
-	s := &v.states[v.curr]
-	s.top = max(0, top)
-	s.left = max(0, left)
+	v.top = max(0, top)
+	v.left = max(0, left)
 }
 
 func (v *view) Cursor() (int, int) {
-	if len(v.states) == 0 {
-		panic("view has no states") // this is a bug not an error
-	}
-	s := v.states[v.curr]
-	return s.cursorRow, s.cursorCol
+	c := v.buffer.GetProperty(cursorProp).(*cursor)
+	return c.row, c.col
 }
 
 func (v *view) SetCursor(row, col int) {
-	if len(v.states) == 0 {
-		panic("view has no states") // this is a bug not an error
+	c := &cursor{
+		row: max(0, row),
+		col: max(0, col),
 	}
-	s := &v.states[v.curr]
-	s.cursorRow = max(0, row)
-	s.cursorCol = max(0, col)
+	v.buffer.SetProperty(cursorProp, c)
 
 	// Adjust the viewport to ensure the cursor is visible.
 	ensureCursorVisible(v)
 }
 
 func (v *view) InsertRune(r rune) {
-	if len(v.states) == 0 {
-		return
-	}
+	cursorRow, cursorCol := v.Cursor()
+	idx := indexForRowCol(v.buffer.Contents(), cursorRow, cursorCol)
+	v.buffer.Insert(idx, string(r))
 
-	curr := v.states[v.curr]
-	idx := bufferIndexAt(curr.buffer.Contents(), curr.cursorRow, curr.cursorCol)
-	newBuf := curr.buffer.Insert(idx, string(r))
-
-	newRow := curr.cursorRow
-	newCol := curr.cursorCol
 	if r == '\n' {
-		newRow++
-		newCol = 0
+		cursorRow++
+		cursorCol = 0
 	} else {
-		newCol++
+		cursorCol++
 	}
-
-	newState := viewState{
-		buffer:    newBuf,
-		top:       curr.top,
-		left:      curr.left,
-		cursorRow: newRow,
-		cursorCol: newCol,
-	}
-	v.states = append([]viewState{newState}, v.states[v.curr:]...)
-	v.curr = 0
-
-	// Adjust the viewport to ensure the cursor is visible.
-	ensureCursorVisible(v)
+	v.SetCursor(cursorRow, cursorCol)
 }
 
 func (v *view) DeleteRune(forward bool) {
-	if len(v.states) == 0 {
-		return
-	}
-
-	curr := v.states[v.curr]
-	idx := bufferIndexAt(curr.buffer.Contents(), curr.cursorRow, curr.cursorCol)
-
-	var start, end int
-	var ch byte
-	var ok bool
-	newRow := curr.cursorRow
-	newCol := curr.cursorCol
+	cursorRow, cursorCol := v.Cursor()
+	idx := indexForRowCol(v.buffer.Contents(), cursorRow, cursorCol)
 
 	if forward {
-		_, ok = curr.buffer.Contents().Index(idx)
-		if !ok {
-			return
-		}
-		start = idx
-		end = idx + 1
+		v.buffer.Delete(idx, idx+1)
+		// Cursor doesn't move in this case
 	} else {
-		if idx == 0 {
-			return
-		}
-		ch, _ = curr.buffer.Contents().Index(idx - 1)
-		start = idx - 1
-		end = idx
-		if ch == '\n' {
-			newRow--
-			colCount := 0
-			scanIdx := start - 1
-			for scanIdx >= 0 {
-				b, ok := curr.buffer.Contents().Index(scanIdx)
-				if !ok {
-					break
+		// Cursor moves back one character, handling the case where it was at the start of a line
+		cursorCol--
+		if cursorCol < 0 {
+			cursorRow--
+			if cursorRow < 0 {
+				cursorRow = 0
+			} else {
+				// Set cursorCol to the end of the previous line
+
+				// Start at the beginning of the previous line
+				cursorCol = 0
+
+				// Scan to the end of the line
+				r := v.buffer.Contents()
+				lineLen := 0
+				for idxStartOfLine := indexForRowCol(r, cursorRow, cursorCol); ; lineLen++ {
+					b, ok := r.Index(idxStartOfLine + lineLen)
+					if !ok || b == '\n' {
+						break
+					}
 				}
-				if b == '\n' {
-					break
-				}
-				colCount++
-				scanIdx--
+				cursorCol = lineLen
 			}
-			newCol = colCount
-		} else {
-			newCol--
 		}
-		if newRow < 0 {
-			newRow = 0
-		}
-		if newCol < 0 {
-			newCol = 0
-		}
+
+		// Actaully delete the character now- we don't do it before
+		// because we need to know the length of the previous line
+		v.buffer.Delete(idx-1, idx)
+		v.SetCursor(cursorRow, cursorCol)
 	}
-
-	newBuf := curr.buffer.Delete(start, end)
-
-	newState := viewState{
-		buffer:    newBuf,
-		top:       curr.top,
-		left:      curr.left,
-		cursorRow: newRow,
-		cursorCol: newCol,
-	}
-	v.states = append([]viewState{newState}, v.states[v.curr:]...)
-	v.curr = 0
-
-	// Adjust the viewport to ensure the cursor is visible.
-	ensureCursorVisible(v)
 }
 
 func (v *view) Undo() {
-	if v.curr+1 < len(v.states) {
-		v.curr++
-	}
+	v.buffer.Undo()
+	ensureCursorVisible(v)
 }
 
 func (v *view) Redo() {
-	if v.curr > 0 {
-		v.curr--
-	}
-}
-
-func NewView(buffer Buffer) View {
-	return &view{
-		states: []viewState{
-			{
-				buffer:    buffer,
-				top:       0,
-				left:      0,
-				cursorRow: 0,
-				cursorCol: 0,
-			},
-		},
-		curr:   0,
-		width:  80,
-		height: 24,
-	}
-}
-
-func bufferIndexAt(r rope.Rope, row, col int) int {
-	idx := 0
-	currRow := 0
-	currCol := 0
-	for {
-		if currRow == row && currCol == col {
-			return idx
-		}
-		b, ok := r.Index(idx)
-		if !ok {
-			return idx
-		}
-		if b == '\n' {
-			currRow++
-			currCol = 0
-		} else {
-			currCol++
-		}
-		idx++
-	}
-}
-
-func ensureCursorVisible(v *view) {
-	s := &v.states[v.curr]
-	if s.cursorRow < s.top {
-		s.top = s.cursorRow
-	} else if s.cursorRow >= s.top+v.height-1 {
-		s.top = s.cursorRow - v.height + 2
-	}
-
-	if s.cursorCol < s.left {
-		s.left = s.cursorCol
-	} else if s.cursorCol >= s.left+v.width-1 {
-		s.left = s.cursorCol - (v.width - 2)
-	}
+	v.buffer.Redo()
+	ensureCursorVisible(v)
 }
 
 func (v *view) Draw(screen tcell.Screen, tabWidth, topOffset, leftOffset int) {
@@ -287,7 +184,7 @@ func (v *view) Draw(screen tcell.Screen, tabWidth, topOffset, leftOffset int) {
 	// TODO: MB characeter sets
 
 	for {
-		r, ok := v.Buffer().Contents().Index(index)
+		r, ok := v.buffer.Contents().Index(index)
 		if !ok {
 			break
 		}
@@ -326,4 +223,116 @@ func (v *view) Draw(screen tcell.Screen, tabWidth, topOffset, leftOffset int) {
 	} else {
 		screen.HideCursor()
 	}
+}
+
+func (v *view) Save(filename string) error {
+	if filename == "" {
+		filename = v.buffer.GetFilename()
+	}
+
+	if filename == "" {
+		return os.ErrInvalid
+	}
+
+	dir, name := filepath.Split(filename)
+
+	// Create a temporary file in the same directory so that os.Rename works
+	// across filesystems.
+	tmp, err := os.CreateTemp(dir, name+".tmp*")
+	if err != nil {
+		return err
+	}
+
+	// Write contents to the temporary file first.
+	if _, err := v.buffer.Write(tmp); err != nil {
+		tmp.Close()
+		os.Remove(tmp.Name())
+		return err
+	}
+
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+
+	// Atomically replace the target file.
+	if err := os.Rename(tmp.Name(), filename); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+
+	return nil
+}
+
+// Create a new view with the given filename and contents. If contents is nil,
+// an empty rope is used. The empty filename is used for unnamed views.
+func NewView(filename string, contents rope.Rope) View {
+	registerViewProperties()
+
+	if contents == nil {
+		contents = rope.NewRope("")
+	}
+
+	v := &view{
+		buffer: NewBuffer(filename, contents),
+		width:  80,
+		height: 24,
+		top:    0,
+		left:   0,
+	}
+	v.SetCursor(0, 0)
+	return v
+}
+
+// Create a new view with the given filename and contents read from the reader.
+func NewViewFromReader(filename string, r io.Reader) (View, error) {
+	contents, err := rope.NewFromReader(r)
+	if err != nil {
+		return nil, err
+	}
+	return NewView(filename, contents), nil
+}
+
+func indexForRowCol(r rope.Rope, row, col int) int {
+	// TODO: This is very slow. We should use a more efficient algorithm.
+	idx := 0
+	currRow := 0
+	currCol := 0
+	for {
+		if currRow == row && currCol == col {
+			return idx
+		}
+		b, ok := r.Index(idx)
+		if !ok {
+			return idx
+		}
+		if b == '\n' {
+			currRow++
+			currCol = 0
+		} else {
+			currCol++
+		}
+		idx++
+	}
+}
+
+func ensureCursorVisible(v *view) {
+	cursorRow, cursorCol := v.Cursor()
+	if cursorRow < v.top {
+		v.top = cursorRow
+	} else if cursorRow >= v.top+v.height-1 {
+		v.top = cursorRow - v.height + 2
+	}
+
+	if cursorCol < v.left {
+		v.left = cursorCol
+	} else if cursorCol >= v.left+v.width-1 {
+		v.left = cursorCol - (v.width - 2)
+	}
+}
+
+var cursorProp PropKey
+
+func registerViewProperties() {
+	cursorProp = RegisterBufferProperty()
 }

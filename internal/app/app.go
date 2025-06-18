@@ -1,6 +1,8 @@
 package app
 
 import (
+	"os"
+
 	"github.com/gdamore/tcell/v2"
 )
 
@@ -133,20 +135,24 @@ func (a *app) handleMouse(ev *tcell.EventMouse) {
 }
 
 func (a *app) OpenFile(filename string) error {
-	buffer, err := NewBuffer(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
-	view := NewView(buffer)
+	view, err := NewViewFromReader(filename, file)
+	if err != nil {
+		return err
+	}
 
 	// Resize the view to match the current view's size
 	width, height := a.GetCurrentView().Size()
 	view.Resize(height, width)
 
 	// If the current view is empty, replace it with the new one
-	currentBuffer := a.GetCurrentView().Buffer()
-	if currentBuffer.GetFilename() == "" && !currentBuffer.IsDirty() {
+	currentView := a.GetCurrentView()
+	if currentView.Buffer().GetFilename() == "" && !currentView.Buffer().IsDirty() {
 		a.views[a.currentView] = view // replace the current view with the new one
 	} else {
 		a.views = append(a.views, view)  // add the new view to the end of the list
@@ -177,13 +183,8 @@ func (a *app) LoadSettings(filename string) error {
 func NewApp() (App, error) {
 	registerCommands()
 
-	buffer, err := NewBuffer("")
-	if err != nil {
-		return nil, err
-	}
-
 	return &app{
-		views:       []View{NewView(buffer)},
+		views:       []View{NewView("", nil)},
 		statusBar:   NewStatusBar(),
 		currentView: 0,
 		settings:    NewSettings(),

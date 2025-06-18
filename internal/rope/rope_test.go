@@ -44,11 +44,11 @@ func TestReadError(t *testing.T) {
 func TestWrite(t *testing.T) {
 	r := NewRope("hello world")
 	var buf strings.Builder
-	n, err := Write(&buf, r)
+	n, err := r.Write(&buf)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if n != len("hello world") {
+	if n != int64(len("hello world")) {
 		t.Fatalf("expected %d bytes written got %d", len("hello world"), n)
 	}
 	if got := buf.String(); got != "hello world" {
@@ -62,7 +62,7 @@ func (errWriter) Write([]byte) (int, error) { return 0, errors.New("fail") }
 
 func TestWriteError(t *testing.T) {
 	r := NewRope("hello")
-	if _, err := Write(errWriter{}, r); err == nil {
+	if _, err := r.Write(errWriter{}); err == nil {
 		t.Fatalf("expected error")
 	}
 }

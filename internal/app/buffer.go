@@ -1,7 +1,7 @@
 package app
 
 import (
-	"os"
+	"io"
 	"path/filepath"
 
 	"tked/internal/rope"
@@ -10,127 +10,209 @@ import (
 type Buffer interface {
 	// Returns the filename of the buffer.
 	GetFilename() string
+	// SetFilename sets the filename of the buffer. This will also reset the title
+	SetFilename(filename string)
+
+	// GetTitle returns the title of the buffer.
+	GetTitle() string
+	// SetTitle sets the title of the buffer.
+	SetTitle(title string)
+
 	// Returns the contents of the buffer.
 	Contents() rope.Rope
+
 	// Returns true if the buffer has been modified since it was last saved.
 	IsDirty() bool
-	// Returns a new Buffer with text inserted at the specified index.
-	// Insert returns a new Buffer with text inserted at the specified index.
-	Insert(idx int, text string) Buffer
-	// Delete returns a new Buffer with the specified range removed.
-	Delete(start, end int) Buffer
-	// Save writes the buffer contents to disk using the filename. It returns
-	// an error if the write fails or no filename was specified.
-	Save() error
+
+	// TODO: Should we have a version that takes a rope?
+	// Insert modifies the buffer contents by inserting the given text at the specified index.
+	Insert(idx int, text string)
+
+	// Delete modifies the buffer contents by removing the specified range.
+	Delete(start, end int)
+
+	// Undo reverts the last editing action. Returns true if an action was undone,
+	// false if nothinig to undo.
+	Undo() bool
+
+	// Redo reapplies an undone editing action. Returns true if an action was
+	// redone, false if nothing to redo.
+	Redo() bool
+
+	// Write writes the buffer contents to the writer. It returns the number of
+	// bytes written and any error that occurred.
+	Write(w io.Writer) (int64, error)
+
+	// GetProperty gets a property from the buffer.
+	GetProperty(prop PropKey) any
+	// SetProperty sets a property on the buffer- these are stored with
+	// each buffer state, so undo/redo will restore the property values.
+	SetProperty(prop PropKey, value any)
+
+	// TODO: We need a way to register a function on a buffer change
+}
+
+type PropKey struct {
+	id int
 }
 
 type buffer struct {
 	filename string
-	contents rope.Rope
-	dirty    bool
+	title    string
+	contents *bufferContents
 }
 
-func (b *buffer) Save() error {
-	if b.filename == "" {
-		return os.ErrInvalid
-	}
+type bufferContents struct {
+	rope             rope.Rope
+	dirty            bool
+	properties       []propValue
+	subsequentState  *bufferContents
+	previousContents *bufferContents
+}
 
-	dir, name := filepath.Split(b.filename)
-	// Create a temporary file in the same directory so that os.Rename works
-	// across filesystems.
-	tmp, err := os.CreateTemp(dir, name+".tmp*")
-	if err != nil {
-		return err
-	}
-	// Write contents to the temporary file first.
-	if _, err := rope.Write(tmp, b.contents); err != nil {
-		tmp.Close()
-		os.Remove(tmp.Name())
-		return err
-	}
-
-	if err := tmp.Close(); err != nil {
-		os.Remove(tmp.Name())
-		return err
-	}
-
-	// Atomically replace the target file.
-	if err := os.Rename(tmp.Name(), b.filename); err != nil {
-		os.Remove(tmp.Name())
-		return err
-	}
-
-	b.dirty = false
-	return nil
+type propValue struct {
+	key   PropKey
+	value any
 }
 
 func (b *buffer) GetFilename() string {
 	return b.filename
 }
 
+func (b *buffer) SetFilename(filename string) {
+	b.filename = filename
+	b.title = filepath.Base(filename)
+}
+
+func (b *buffer) GetTitle() string {
+	return b.title
+}
+
+func (b *buffer) SetTitle(title string) {
+	b.title = title
+}
+
 func (b *buffer) Contents() rope.Rope {
-	return b.contents
+	return b.contents.rope
 }
 
 func (b *buffer) IsDirty() bool {
-	return b.dirty
+	return b.contents.dirty
 }
 
-func (b *buffer) Insert(idx int, text string) Buffer {
-	if idx < 0 {
-		idx = 0
-	}
-	if idx > b.contents.Len() {
-		idx = b.contents.Len()
-	}
-	nb := &buffer{
-		filename: b.filename,
-		contents: b.contents.Insert(idx, text),
-		dirty:    true,
-	}
-	return nb
+func (b *buffer) Insert(idx int, text string) {
+	// Ensure idx is within bounds of the rope.
+	idx = max(0, min(idx, b.contents.rope.Len()))
+
+	// Create a new buffer contents with the new text.
+	nc := b.newContents()
+	nc.rope = nc.rope.Insert(idx, text)
+	nc.dirty = true
 }
 
-func (b *buffer) Delete(start, end int) Buffer {
-	if start < 0 {
-		start = 0
-	}
-	if end > b.contents.Len() {
-		end = b.contents.Len()
-	}
+func (b *buffer) Delete(start, end int) {
+	// Ensure start and end are within bounds of the rope.
+	start = max(0, min(start, b.contents.rope.Len()))
+	end = max(0, min(end, b.contents.rope.Len()))
+
 	if start > end {
 		start, end = end, start
 	}
-	if start == end {
-		return b
+	if start != end { // Create a new buffer contents with the deleted text.
+		nc := b.newContents()
+		nc.rope = nc.rope.Delete(start, end)
+		nc.dirty = true
 	}
-	nb := &buffer{
-		filename: b.filename,
-		contents: b.contents.Delete(start, end),
-		dirty:    true,
-	}
-	return nb
 }
 
-func NewBuffer(filename string) (Buffer, error) {
-	contents := rope.NewRope("")
-
-	if filename != "" {
-		file, err := os.Open(filename)
-		if err != nil {
-			return nil, err
-		}
-		defer file.Close()
-
-		contents, err = rope.NewFromReader(file)
-		if err != nil {
-			return nil, err
-		}
+func (b *buffer) Undo() bool {
+	if b.contents.previousContents == nil {
+		return false
 	}
 
-	return &buffer{
-		filename: filename,
-		contents: contents,
-		dirty:    false,
-	}, nil
+	b.contents = b.contents.previousContents
+	return true
+}
+
+func (b *buffer) Redo() bool {
+	if b.contents.subsequentState == nil {
+		return false
+	}
+
+	b.contents = b.contents.subsequentState
+	return true
+}
+
+func (b *buffer) Write(w io.Writer) (int64, error) {
+	n, err := b.contents.rope.Write(w)
+	if err == nil {
+		b.contents.dirty = false
+	}
+	return n, err
+}
+
+func (b *buffer) GetProperty(prop PropKey) any {
+	for _, pv := range b.contents.properties {
+		if pv.key.id == prop.id {
+			return pv.value
+		}
+	}
+	return nil
+}
+
+func (b *buffer) SetProperty(prop PropKey, value any) {
+	for i, pv := range b.contents.properties {
+		if pv.key.id == prop.id {
+			b.contents.properties[i].value = value
+			return
+		}
+	}
+	b.contents.properties = append(b.contents.properties, propValue{key: prop, value: value})
+}
+
+func (b *buffer) newContents() *bufferContents {
+	nc := &bufferContents{
+		rope:             b.contents.rope,
+		dirty:            b.contents.dirty,
+		properties:       append([]propValue{}, b.contents.properties...),
+		subsequentState:  nil,
+		previousContents: b.contents,
+	}
+	b.contents.subsequentState = nc
+	b.contents = nc
+
+	return nc
+}
+
+func NewBuffer(filename string, contents rope.Rope) Buffer {
+	if contents == nil {
+		contents = rope.NewRope("")
+	}
+
+	var b *buffer = &buffer{
+		contents: &bufferContents{
+			rope:             contents,
+			dirty:            false,
+			properties:       []propValue{},
+			subsequentState:  nil,
+			previousContents: nil,
+		},
+	}
+	b.SetFilename(filename)
+	return b
+}
+
+func NewBufferFromReader(filename string, r io.Reader) (Buffer, error) {
+	contents, err := rope.NewFromReader(r)
+	if err != nil {
+		return nil, err
+	}
+	return NewBuffer(filename, contents), nil
+}
+
+var propIdCounter int = 0
+
+func RegisterBufferProperty() PropKey {
+	propIdCounter++
+	return PropKey{id: propIdCounter}
 }

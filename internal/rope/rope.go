@@ -16,6 +16,8 @@ type Rope interface {
 	String() string
 	// Index returns the byte at position idx. ok will be false if idx is out of range.
 	Index(idx int) (byte, bool)
+	// Write writes the contents of the rope to w.
+	Write(w io.Writer) (int64, error)
 }
 
 // Node represents a node in the rope tree. A node is either an internal
@@ -85,35 +87,6 @@ func splitNode(n *Node, idx int) (*Node, *Node) {
 // strings. It implements the Rope interface.
 type binaryRope struct {
 	root *Node
-}
-
-// New creates a new Rope containing the provided string.
-func NewRope(s string) Rope {
-	return &binaryRope{root: leaf(s)}
-}
-
-// Read consumes all data from r and returns a new Rope containing it.
-// Any error encountered while reading is returned.
-func NewFromReader(r io.Reader) (Rope, error) {
-	if r == nil {
-		return &binaryRope{}, nil
-	}
-	// TODO: This may waste a lot of memory
-	data, err := io.ReadAll(r)
-	if err != nil {
-		return nil, err
-	}
-
-	return NewRope(string(data)), nil
-}
-
-// Write writes the contents of rp to w. It returns the number of bytes written
-// and any error encountered during the write.
-func Write(w io.Writer, rp Rope) (int, error) {
-	if w == nil || rp == nil {
-		return 0, nil
-	}
-	return io.WriteString(w, rp.String())
 }
 
 // Len returns the number of bytes stored in the rope.
@@ -200,4 +173,34 @@ func (r *binaryRope) Index(idx int) (byte, bool) {
 		return n.value[idx], true
 	}
 	return 0, false
+}
+
+// Write writes the contents of rp to w. It returns the number of bytes written
+// and any error encountered during the write.
+func (r *binaryRope) Write(w io.Writer) (int64, error) {
+	if w == nil {
+		return 0, nil
+	}
+	n, err := io.WriteString(w, r.String())
+	return int64(n), err
+}
+
+// New creates a new Rope containing the provided string.
+func NewRope(s string) Rope {
+	return &binaryRope{root: leaf(s)}
+}
+
+// Read consumes all data from r and returns a new Rope containing it.
+// Any error encountered while reading is returned.
+func NewFromReader(r io.Reader) (Rope, error) {
+	if r == nil {
+		return &binaryRope{}, nil
+	}
+	// TODO: This may waste a lot of memory
+	data, err := io.ReadAll(r)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewRope(string(data)), nil
 }

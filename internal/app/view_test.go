@@ -7,8 +7,8 @@ import (
 )
 
 func TestViewInsertUndoRedo(t *testing.T) {
-	b, _ := NewBuffer("")
-	v := NewView(b)
+	r := rope.NewRope("")
+	v := NewView("", r)
 	v.InsertRune('a')
 	v.InsertRune('b')
 	if got := v.Buffer().Contents().String(); got != "ab" {
@@ -25,8 +25,8 @@ func TestViewInsertUndoRedo(t *testing.T) {
 }
 
 func TestViewDeleteRune(t *testing.T) {
-	b, _ := NewBuffer("")
-	v := NewView(b)
+	r := rope.NewRope("")
+	v := NewView("", r)
 	v.InsertRune('a')
 	v.InsertRune('b')
 	v.DeleteRune(false)
@@ -40,22 +40,20 @@ func TestViewDeleteRune(t *testing.T) {
 }
 
 func TestViewDeleteRuneNewline(t *testing.T) {
-	b, _ := NewBuffer("")
-	b = b.Insert(0, "a\nb")
-	v := NewView(b)
+	r := rope.NewRope("a\nb")
+	v := NewView("", r)
 	v.SetCursor(1, 0)
 	v.DeleteRune(false)
 	if got := v.Buffer().Contents().String(); got != "ab" {
 		t.Fatalf("backspace newline failed, got %q", got)
 	}
-	r, c := v.Cursor()
-	if r != 0 || c != 1 {
-		t.Fatalf("expected cursor 0,1 got %d,%d", r, c)
+	row, col := v.Cursor()
+	if row != 0 || col != 1 {
+		t.Fatalf("expected cursor 0,1 got %d,%d", row, col)
 	}
 
-	b2, _ := NewBuffer("")
-	b2 = b2.Insert(0, "a\nb")
-	v2 := NewView(b2)
+	r2 := rope.NewRope("a\nb")
+	v2 := NewView("", r2)
 	v2.SetCursor(0, 1)
 	v2.DeleteRune(true)
 	if got := v2.Buffer().Contents().String(); got != "ab" {
@@ -63,15 +61,15 @@ func TestViewDeleteRuneNewline(t *testing.T) {
 	}
 }
 
-func TestBufferIndexAt(t *testing.T) {
+func TestIndexForRowCol(t *testing.T) {
 	r := rope.NewRope("hello\nworld")
-	if idx := bufferIndexAt(r, 1, 2); idx != 8 {
+	if idx := indexForRowCol(r, 1, 2); idx != 8 {
 		t.Fatalf("expected 8 got %d", idx)
 	}
-	if idx := bufferIndexAt(r, 0, 3); idx != 3 {
+	if idx := indexForRowCol(r, 0, 3); idx != 3 {
 		t.Fatalf("expected 3 got %d", idx)
 	}
-	if idx := bufferIndexAt(r, 2, 0); idx != r.Len() {
+	if idx := indexForRowCol(r, 2, 0); idx != r.Len() {
 		t.Fatalf("expected %d got %d", r.Len(), idx)
 	}
 }

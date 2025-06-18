@@ -41,7 +41,15 @@ func (c *CommandSave) Name() string { return "save" }
 func (c *CommandSave) Execute(app App, ev *tcell.EventKey) (bool, error) {
 	view := app.GetCurrentView()
 	if view != nil {
-		if err := view.Buffer().Save(); err != nil {
+		filename := view.Buffer().GetFilename()
+		if filename == "" {
+			var ok bool
+			filename, ok = app.GetStatusBar().Input("Save as: ")
+			if !ok {
+				return false, nil
+			}
+		}
+		if err := view.Save(""); err != nil {
 			return false, err
 		}
 	}

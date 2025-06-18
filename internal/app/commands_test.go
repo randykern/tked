@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
+
+	"tked/internal/rope"
 )
 
 type dummyApp struct {
@@ -46,8 +48,8 @@ func TestCommandOpenExecute(t *testing.T) {
 }
 
 func TestCommandMoveExecute(t *testing.T) {
-	b, _ := NewBuffer("")
-	v := NewView(b)
+	r := rope.NewRope("")
+	v := NewView("", r)
 	d := &dummyApp{view: v}
 	screen := tcell.NewSimulationScreen("")
 	screen.Init()
@@ -57,18 +59,19 @@ func TestCommandMoveExecute(t *testing.T) {
 	if _, err := c.Execute(d, nil); err != nil {
 		t.Fatalf("error: %v", err)
 	}
-	r, c2 := v.Cursor()
-	if r != 1 || c2 != 1 {
-		t.Fatalf("expected cursor 1,1 got %d,%d", r, c2)
+	row, col := v.Cursor()
+	if row != 1 || col != 1 {
+		t.Fatalf("expected cursor 1,1 got %d,%d", row, col)
 	}
 }
 
+// TODO: Add a TestCommandSaveExecuteUnnamed (status bar input)
 func TestCommandSaveExecute(t *testing.T) {
 	tmp, _ := os.CreateTemp("", "cmdsave*.txt")
 	tmp.Close()
 	defer os.Remove(tmp.Name())
-	b, _ := NewBuffer(tmp.Name())
-	v := NewView(b.Insert(0, "data"))
+	r := rope.NewRope("data")
+	v := NewView(tmp.Name(), r)
 	d := &dummyApp{view: v}
 	screen := tcell.NewSimulationScreen("")
 	screen.Init()
