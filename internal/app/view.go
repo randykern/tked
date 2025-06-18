@@ -321,5 +321,7 @@ func indexForRowCol(r rope.Rope, row, col int) int {
 var cursorProp PropKey
 
 func registerViewProperties() {
-	cursorProp = RegisterBufferProperty()
+	if cursorProp == nil {
+		cursorProp = RegisterBufferProperty()
+	}
 }
