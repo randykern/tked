@@ -53,9 +53,8 @@ type Buffer interface {
 	OnChange(callback func(buffer Buffer, start, end int, context any), context any) ChangeRegistration
 }
 
-// TODO: Make this an interface with no fields, to hide the id field.
-type PropKey struct {
-	id int
+// PropKey is a unique identifier for a property.
+type PropKey interface {
 }
 
 type ChangeRegistration interface {
@@ -77,8 +76,12 @@ type bufferContents struct {
 	previousContents *bufferContents
 }
 
+type propKey struct {
+	id int
+}
+
 type propValue struct {
-	key   PropKey
+	key   propKey
 	value any
 }
 
@@ -171,8 +174,9 @@ func (b *buffer) Write(w io.Writer) (int64, error) {
 }
 
 func (b *buffer) GetProperty(prop PropKey) any {
+	privatePropKey := prop.(propKey)
 	for _, pv := range b.contents.properties {
-		if pv.key.id == prop.id {
+		if pv.key.id == privatePropKey.id {
 			return pv.value
 		}
 	}
@@ -180,13 +184,14 @@ func (b *buffer) GetProperty(prop PropKey) any {
 }
 
 func (b *buffer) SetProperty(prop PropKey, value any) {
+	privatePropKey := prop.(propKey)
 	for i, pv := range b.contents.properties {
-		if pv.key.id == prop.id {
+		if pv.key.id == privatePropKey.id {
 			b.contents.properties[i].value = value
 			return
 		}
 	}
-	b.contents.properties = append(b.contents.properties, propValue{key: prop, value: value})
+	b.contents.properties = append(b.contents.properties, propValue{key: privatePropKey, value: value})
 }
 
 func (b *buffer) OnChange(callback func(buffer Buffer, start, end int, context any), context any) ChangeRegistration {
@@ -259,5 +264,5 @@ var propIdCounter int = 0
 
 func RegisterBufferProperty() PropKey {
 	propIdCounter++
-	return PropKey{id: propIdCounter}
+	return propKey{id: propIdCounter}
 }
