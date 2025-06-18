@@ -49,17 +49,24 @@ type Buffer interface {
 	// each buffer state, so undo/redo will restore the property values.
 	SetProperty(prop PropKey, value any)
 
-	// TODO: We need a way to register a function on a buffer change
+	// OnChange registers a callback function to be called when the buffer changes.
+	OnChange(callback func(buffer Buffer, start, end int, context any), context any) ChangeRegistration
 }
 
+// TODO: Make this an interface with no fields, to hide the id field.
 type PropKey struct {
 	id int
 }
 
+type ChangeRegistration interface {
+	Remove()
+}
+
 type buffer struct {
-	filename string
-	title    string
-	contents *bufferContents
+	filename        string
+	title           string
+	contents        *bufferContents
+	changeCallbacks []changeCallback
 }
 
 type bufferContents struct {
@@ -73,6 +80,12 @@ type bufferContents struct {
 type propValue struct {
 	key   PropKey
 	value any
+}
+
+type changeCallback struct {
+	buffer   *buffer
+	callback func(buffer Buffer, start, end int, context any)
+	context  any
 }
 
 func (b *buffer) GetFilename() string {
@@ -108,6 +121,8 @@ func (b *buffer) Insert(idx int, text string) {
 	nc := b.newContents()
 	nc.rope = nc.rope.Insert(idx, text)
 	nc.dirty = true
+
+	b.notifyChange(idx, idx+len(text))
 }
 
 func (b *buffer) Delete(start, end int) {
@@ -122,6 +137,8 @@ func (b *buffer) Delete(start, end int) {
 		nc := b.newContents()
 		nc.rope = nc.rope.Delete(start, end)
 		nc.dirty = true
+
+		b.notifyChange(start, end)
 	}
 }
 
@@ -131,6 +148,7 @@ func (b *buffer) Undo() bool {
 	}
 
 	b.contents = b.contents.previousContents
+	b.notifyChange(0, b.contents.rope.Len())
 	return true
 }
 
@@ -140,6 +158,7 @@ func (b *buffer) Redo() bool {
 	}
 
 	b.contents = b.contents.subsequentState
+	b.notifyChange(0, b.contents.rope.Len())
 	return true
 }
 
@@ -170,6 +189,23 @@ func (b *buffer) SetProperty(prop PropKey, value any) {
 	b.contents.properties = append(b.contents.properties, propValue{key: prop, value: value})
 }
 
+func (b *buffer) OnChange(callback func(buffer Buffer, start, end int, context any), context any) ChangeRegistration {
+	cb := changeCallback{
+		buffer:   b,
+		callback: callback,
+		context:  context,
+	}
+
+	b.changeCallbacks = append(b.changeCallbacks, cb)
+	return &cb
+}
+
+func (b *buffer) notifyChange(start, end int) {
+	for _, cb := range b.changeCallbacks {
+		cb.callback(b, start, end, cb.context)
+	}
+}
+
 func (b *buffer) newContents() *bufferContents {
 	nc := &bufferContents{
 		rope:             b.contents.rope,
@@ -182,6 +218,15 @@ func (b *buffer) newContents() *bufferContents {
 	b.contents = nc
 
 	return nc
+}
+
+func (c *changeCallback) Remove() {
+	for i, cb := range c.buffer.changeCallbacks {
+		if &cb == c {
+			c.buffer.changeCallbacks = append(c.buffer.changeCallbacks[:i], c.buffer.changeCallbacks[i+1:]...)
+			return
+		}
+	}
 }
 
 func NewBuffer(filename string, contents rope.Rope) Buffer {

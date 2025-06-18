@@ -14,11 +14,11 @@ func TestViewInsertUndoRedo(t *testing.T) {
 	if got := v.Buffer().Contents().String(); got != "ab" {
 		t.Fatalf("expected ab got %q", got)
 	}
-	v.Undo()
+	v.Buffer().Undo()
 	if got := v.Buffer().Contents().String(); got != "a" {
 		t.Fatalf("after undo expected a got %q", got)
 	}
-	v.Redo()
+	v.Buffer().Redo()
 	if got := v.Buffer().Contents().String(); got != "ab" {
 		t.Fatalf("after redo expected ab got %q", got)
 	}

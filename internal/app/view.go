@@ -32,21 +32,12 @@ type View interface {
 	// to ensure the cursor is visible.
 	SetCursor(row, col int)
 
-	// TODO: We may need a way to register a function on a buffer change
-	// That way we don't need Undo/Redo wrappers etc., and ensureVisible
-	// can always be called in the hook function.
-
 	// InsertRune inserts a rune into the buffer at the cursor position.
 	InsertRune(r rune)
 	// DeleteRune deletes a rune. When forward is true it deletes the rune
 	// under the cursor (Delete key behaviour). Otherwise it deletes the
 	// rune before the cursor (Backspace behaviour).
 	DeleteRune(forward bool)
-
-	// Undo reverts the last editing action.
-	Undo()
-	// Redo reapplies an undone editing action.
-	Redo()
 
 	// Draw renders the view's contents on the provided screen.
 	// topOffset and leftOffset specify where to start drawing on the screen.
@@ -105,7 +96,7 @@ func (v *view) SetCursor(row, col int) {
 	v.buffer.SetProperty(cursorProp, c)
 
 	// Adjust the viewport to ensure the cursor is visible.
-	ensureCursorVisible(v)
+	v.ensureCursorVisible()
 }
 
 func (v *view) InsertRune(r rune) {
@@ -160,16 +151,6 @@ func (v *view) DeleteRune(forward bool) {
 		v.buffer.Delete(idx-1, idx)
 		v.SetCursor(cursorRow, cursorCol)
 	}
-}
-
-func (v *view) Undo() {
-	v.buffer.Undo()
-	ensureCursorVisible(v)
-}
-
-func (v *view) Redo() {
-	v.buffer.Redo()
-	ensureCursorVisible(v)
 }
 
 func (v *view) Draw(screen tcell.Screen, tabWidth, topOffset, leftOffset int) {
@@ -265,6 +246,25 @@ func (v *view) Save(filename string) error {
 	return nil
 }
 
+func (v *view) ensureCursorVisible() {
+	cursorRow, cursorCol := v.Cursor()
+	if cursorRow < v.top {
+		v.top = cursorRow
+	} else if cursorRow >= v.top+v.height-1 {
+		v.top = cursorRow - v.height + 2
+	}
+
+	if cursorCol < v.left {
+		v.left = cursorCol
+	} else if cursorCol >= v.left+v.width-1 {
+		v.left = cursorCol - (v.width - 2)
+	}
+}
+
+func (v *view) onBufferChange(buffer Buffer, start, end int, context any) {
+	v.ensureCursorVisible()
+}
+
 // Create a new view with the given filename and contents. If contents is nil,
 // an empty rope is used. The empty filename is used for unnamed views.
 func NewView(filename string, contents rope.Rope) View {
@@ -282,6 +282,7 @@ func NewView(filename string, contents rope.Rope) View {
 		left:   0,
 	}
 	v.SetCursor(0, 0)
+	v.buffer.OnChange(v.onBufferChange, v)
 	return v
 }
 
@@ -314,21 +315,6 @@ func indexForRowCol(r rope.Rope, row, col int) int {
 			currCol++
 		}
 		idx++
-	}
-}
-
-func ensureCursorVisible(v *view) {
-	cursorRow, cursorCol := v.Cursor()
-	if cursorRow < v.top {
-		v.top = cursorRow
-	} else if cursorRow >= v.top+v.height-1 {
-		v.top = cursorRow - v.height + 2
-	}
-
-	if cursorCol < v.left {
-		v.left = cursorCol
-	} else if cursorCol >= v.left+v.width-1 {
-		v.left = cursorCol - (v.width - 2)
 	}
 }
 

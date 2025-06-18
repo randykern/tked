@@ -17,7 +17,7 @@ func (c *CommandUndo) Name() string { return "undo" }
 func (c *CommandUndo) Execute(app App, ev *tcell.EventKey) (bool, error) {
 	view := app.GetCurrentView()
 	if view != nil {
-		view.Undo()
+		view.Buffer().Undo()
 	}
 	return false, nil
 }
@@ -29,7 +29,7 @@ func (c *CommandRedo) Name() string { return "redo" }
 func (c *CommandRedo) Execute(app App, ev *tcell.EventKey) (bool, error) {
 	view := app.GetCurrentView()
 	if view != nil {
-		view.Redo()
+		view.Buffer().Redo()
 	}
 	return false, nil
 }
