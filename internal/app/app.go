@@ -154,7 +154,6 @@ func (a *app) handleKey(screen tcell.Screen, ev *tcell.EventKey) bool {
 			r = '\n'
 		}
 		view.InsertRune(r)
-		adjustViewport(view, screen)
 	} else {
 		command := a.settings.KeyBindings().GetCommandForKey(ev.Key(), ev.Modifiers())
 		if command != nil {

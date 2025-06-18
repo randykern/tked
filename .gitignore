@@ -2,6 +2,7 @@
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
 # Binaries for programs and plugins
+tked
 *.exe
 *.exe~
 *.dll
@@ -31,6 +32,4 @@ go.work.sum
 # .idea/
 # .vscode/
 
-main
-foo.txt
 sample_text_file.txt

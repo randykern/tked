@@ -15,7 +15,8 @@ type View interface {
 	SetTopLeft(top, left int)
 	// Cursor returns the current cursor position as row and column indexes.
 	Cursor() (int, int)
-	// SetCursor updates the current cursor position.
+	// SetCursor updates the current cursor position and moves the viewport
+	// to ensure the cursor is visible.
 	SetCursor(row, col int)
 	// InsertRune inserts a rune into the buffer at the cursor position.
 	InsertRune(r rune)
@@ -79,7 +80,7 @@ func (v *view) SetTopLeft(top, left int) {
 
 func (v *view) Cursor() (int, int) {
 	if len(v.states) == 0 {
-		return 0, 0
+		panic("view has no states") // this is a bug not an error
 	}
 	s := v.states[v.curr]
 	return s.cursorRow, s.cursorCol
@@ -87,11 +88,14 @@ func (v *view) Cursor() (int, int) {
 
 func (v *view) SetCursor(row, col int) {
 	if len(v.states) == 0 {
-		return
+		panic("view has no states") // this is a bug not an error
 	}
 	s := &v.states[v.curr]
 	s.cursorRow = max(0, row)
 	s.cursorCol = max(0, col)
+
+	// Adjust the viewport to ensure the cursor is visible.
+	ensureCursorVisible(v)
 }
 
 func (v *view) InsertRune(r rune) {
@@ -121,6 +125,9 @@ func (v *view) InsertRune(r rune) {
 	}
 	v.states = append([]viewState{newState}, v.states[v.curr:]...)
 	v.curr = 0
+
+	// Adjust the viewport to ensure the cursor is visible.
+	ensureCursorVisible(v)
 }
 
 func (v *view) DeleteRune(forward bool) {
@@ -189,6 +196,9 @@ func (v *view) DeleteRune(forward bool) {
 	}
 	v.states = append([]viewState{newState}, v.states[v.curr:]...)
 	v.curr = 0
+
+	// Adjust the viewport to ensure the cursor is visible.
+	ensureCursorVisible(v)
 }
 
 func (v *view) Undo() {
@@ -239,5 +249,20 @@ func bufferIndexAt(r rope.Rope, row, col int) int {
 			currCol++
 		}
 		idx++
+	}
+}
+
+func ensureCursorVisible(v *view) {
+	s := &v.states[v.curr]
+	if s.cursorRow < s.top {
+		s.top = s.cursorRow
+	} else if s.cursorRow >= s.top+v.height-1 {
+		s.top = s.cursorRow - v.height + 2
+	}
+
+	if s.cursorCol < s.left {
+		s.left = s.cursorCol
+	} else if s.cursorCol >= s.left+v.width-1 {
+		s.left = s.cursorCol - (v.width - 2)
 	}
 }
