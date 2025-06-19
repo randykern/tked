@@ -2,9 +2,11 @@ package app
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/gdamore/tcell/v2"
+
+	"tked/internal/lsp"
+	"tked/internal/tklog"
 )
 
 type App interface {
@@ -30,7 +32,6 @@ type app struct {
 	tabBar      TabBar
 	currentView int
 	settings    Settings
-	lsps        map[string]*lspClient
 }
 
 func (a *app) OpenFile(filename string) error {
@@ -57,8 +58,6 @@ func (a *app) OpenFile(filename string) error {
 		a.views = append(a.views, view)  // add the new view to the end of the list
 		a.currentView = len(a.views) - 1 // set the current view to the new one
 	}
-
-	a.startLSP(filename)
 
 	return nil
 }
@@ -119,7 +118,14 @@ eventLoop:
 		a.GetCurrentView().Draw(screen, a.settings.TabWidth(), 1, 0)
 		a.statusBar.Draw(a.GetCurrentView())
 	}
+
+	for _, view := range a.views {
+		view.Buffer().Close()
+	}
+
+	lsp.ShutdownAll()
 }
+
 func (a *app) Settings() Settings { return a.settings }
 
 func (a *app) LoadSettings(filename string) error {
@@ -134,7 +140,7 @@ func (a *app) LoadSettings(filename string) error {
 
 func (a *app) GetStatusBar() StatusBar {
 	if a.statusBar == nil {
-		panic("status bar is nil") // this is a bug not an error!
+		tklog.Panic("status bar is nil") // this is a bug not an error!
 	}
 
 	return a.statusBar
@@ -142,7 +148,7 @@ func (a *app) GetStatusBar() StatusBar {
 
 func (a *app) GetCurrentView() View {
 	if a.currentView < 0 || a.currentView >= len(a.views) || a.views[a.currentView] == nil {
-		panic("no active view") // this is a bug not an error!
+		tklog.Panic("no active view") // this is a bug not an error!
 	}
 
 	return a.views[a.currentView]
@@ -243,6 +249,8 @@ func (a *app) closeView(idx int) {
 		}
 	}
 
+	v.Buffer().Close()
+
 	a.views = append(a.views[:idx], a.views[idx+1:]...)
 	if len(a.views) == 0 {
 		a.views = []View{NewView("", nil)}
@@ -256,31 +264,32 @@ func (a *app) closeView(idx int) {
 	}
 }
 
+var theApp App
+
 func NewApp() (App, error) {
+	if theApp != nil {
+		tklog.Panic("app already created") // this is a bug not an error!
+	}
+
 	registerCommands()
 
-	return &app{
-		views:       []View{NewView("", nil)},
+	appObject := &app{
+		views:       []View{},
 		statusBar:   NewStatusBar(),
 		tabBar:      NewTabBar(),
 		currentView: 0,
 		settings:    NewSettings(),
-		lsps:        make(map[string]*lspClient),
-	}, nil
+	}
+	theApp = appObject
+	appObject.views = []View{NewView("", nil)}
+
+	return theApp, nil
 }
 
-func (a *app) startLSP(filename string) {
-	ext := filepath.Ext(filename)
-
-	// TODO: Add support for other languages, and LSP mapping in the editor settings
-	if ext == ".go" {
-		client, err := newLSPClient("gopls", filename)
-		if err != nil {
-			return
-		}
-		if a.lsps == nil {
-			panic("lsps is nil") // this is a bug not an error!
-		}
-		a.lsps[filename] = client
+func GetApp() App {
+	if theApp == nil {
+		tklog.Panic("app not created") // this is a bug not an error!
 	}
+
+	return theApp
 }

@@ -4,10 +4,15 @@ import (
 	"io"
 	"path/filepath"
 
+	"tked/internal/lsp"
 	"tked/internal/rope"
 )
 
 type Buffer interface {
+	// GetVersion returns the version of the buffer- which is incremented each time the
+	//buffer is modified, including undo/redo. E.g. it is monotonically increasing.
+	GetVersion() int32
+
 	// Returns the filename of the buffer.
 	GetFilename() string
 	// SetFilename sets the filename of the buffer. This will also reset the title
@@ -43,9 +48,12 @@ type Buffer interface {
 	// bytes written and any error that occurred.
 	Write(w io.Writer) (int64, error)
 
-	// GetProperty gets a property from the buffer.
+	// Close closes the buffer.
+	Close()
+
+	// GetProperty gets a custom property from the buffer.
 	GetProperty(prop PropKey) any
-	// SetProperty sets a property on the buffer- these are stored with
+	// SetProperty sets a custom property on the buffer- these are stored with
 	// each buffer state, so undo/redo will restore the property values.
 	SetProperty(prop PropKey, value any)
 
@@ -62,6 +70,7 @@ type ChangeRegistration interface {
 }
 
 type buffer struct {
+	version         int32
 	filename        string
 	title           string
 	contents        *bufferContents
@@ -89,6 +98,10 @@ type changeCallback struct {
 	buffer   *buffer
 	callback func(buffer Buffer, start, end int, context any)
 	context  any
+}
+
+func (b *buffer) GetVersion() int32 {
+	return b.version
 }
 
 func (b *buffer) GetFilename() string {
@@ -124,6 +137,7 @@ func (b *buffer) Insert(idx int, text string) {
 	nc := b.newContents()
 	nc.rope = nc.rope.Insert(idx, text)
 	nc.dirty = true
+	b.version++
 
 	b.notifyChange(idx, idx+len(text))
 }
@@ -140,6 +154,7 @@ func (b *buffer) Delete(start, end int) {
 		nc := b.newContents()
 		nc.rope = nc.rope.Delete(start, end)
 		nc.dirty = true
+		b.version++
 
 		b.notifyChange(start, end)
 	}
@@ -151,6 +166,7 @@ func (b *buffer) Undo() bool {
 	}
 
 	b.contents = b.contents.previousContents
+	b.version++
 	b.notifyChange(0, b.contents.rope.Len())
 	return true
 }
@@ -161,6 +177,7 @@ func (b *buffer) Redo() bool {
 	}
 
 	b.contents = b.contents.subsequentState
+	b.version++
 	b.notifyChange(0, b.contents.rope.Len())
 	return true
 }
@@ -171,6 +188,13 @@ func (b *buffer) Write(w io.Writer) (int64, error) {
 		b.contents.dirty = false
 	}
 	return n, err
+}
+
+func (b *buffer) Close() {
+	lspClient := lsp.GetLSP(b.GetFilename())
+	if lspClient != nil {
+		lspClient.DidClose(b.GetFilename())
+	}
 }
 
 func (b *buffer) GetProperty(prop PropKey) any {
@@ -208,6 +232,11 @@ func (b *buffer) OnChange(callback func(buffer Buffer, start, end int, context a
 func (b *buffer) notifyChange(start, end int) {
 	for _, cb := range b.changeCallbacks {
 		cb.callback(b, start, end, cb.context)
+	}
+
+	lspClient := lsp.GetLSP(b.GetFilename())
+	if lspClient != nil {
+		lspClient.DidChangeFull(b.GetFilename(), b.GetVersion(), b.Contents().String())
 	}
 }
 
@@ -249,6 +278,11 @@ func NewBuffer(filename string, contents rope.Rope) Buffer {
 		},
 	}
 	b.SetFilename(filename)
+
+	lspClient := lsp.GetLSP(filename)
+	if lspClient != nil {
+		lspClient.DidOpen(filename, b.version, b.contents.rope.String())
+	}
 	return b
 }
 
