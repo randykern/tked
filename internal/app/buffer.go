@@ -140,21 +140,21 @@ func (b *buffer) IndexForRow(row int) (int, int) {
 	}
 
 	// TODO: This is very slow. We should use a more efficient algorithm.
-	idxLastRow := 0
+	idxRowStart := 0
 	idx := 0
 	currRow := 0
 	for {
 		if currRow == row {
-			return idx, currRow
+			return idxRowStart, currRow
 		}
 
-		b, ok := b.contents.rope.Index(idx)
+		ch, ok := b.contents.rope.Index(idx)
 		if !ok {
-			return idxLastRow, currRow
+			return idxRowStart, currRow
 		}
-		if b == '\n' {
+		if ch == '\n' {
 			currRow++
-			idxLastRow = idx // TODO: what if the last row is empty?
+			idxRowStart = idx + 1
 		}
 		idx++
 	}
@@ -257,7 +257,7 @@ func (b *buffer) OnChange(callback func(buffer Buffer, start, end int, context a
 	}
 
 	b.changeCallbacks = append(b.changeCallbacks, cb)
-	return &cb
+	return &b.changeCallbacks[len(b.changeCallbacks)-1]
 }
 
 func (b *buffer) notifyChange(start, end int) {
@@ -286,8 +286,8 @@ func (b *buffer) newContents() *bufferContents {
 }
 
 func (c *changeCallback) Remove() {
-	for i, cb := range c.buffer.changeCallbacks {
-		if &cb == c {
+	for i := range c.buffer.changeCallbacks {
+		if &c.buffer.changeCallbacks[i] == c {
 			c.buffer.changeCallbacks = append(c.buffer.changeCallbacks[:i], c.buffer.changeCallbacks[i+1:]...)
 			return
 		}
