@@ -1,6 +1,8 @@
 package app
 
-import "github.com/gdamore/tcell/v2"
+import (
+	"github.com/gdamore/tcell/v2"
+)
 
 type KeyBinding struct {
 	Key     tcell.Key
@@ -31,13 +33,14 @@ func (k KeyBindings) GetCommandForKey(key tcell.Key, mod tcell.ModMask) Command 
 
 func DefaultKeyBindings() KeyBindings {
 	return NewKeyBindings([]KeyBinding{
-		{tcell.KeyEscape, tcell.ModNone, GetCommand("exit")},
+		{tcell.KeyCtrlD, tcell.ModCtrl, GetCommand("exit")},
 		{tcell.KeyCtrlZ, tcell.ModCtrl, GetCommand("undo")},
 		{tcell.KeyCtrlR, tcell.ModCtrl, GetCommand("redo")},
 		{tcell.KeyCtrlN, tcell.ModCtrl, GetCommand("new")},
+		{tcell.KeyCtrlW, tcell.ModCtrl, GetCommand("saveAs")},
 		{tcell.KeyCtrlS, tcell.ModCtrl, GetCommand("save")},
 		{tcell.KeyCtrlO, tcell.ModCtrl, GetCommand("open")},
-		{tcell.KeyCtrlW, tcell.ModCtrl, GetCommand("close")},
+		{tcell.KeyCtrlQ, tcell.ModCtrl, GetCommand("close")},
 		{tcell.KeyUp, tcell.ModNone, GetCommand("up")},
 		{tcell.KeyDown, tcell.ModNone, GetCommand("down")},
 		{tcell.KeyLeft, tcell.ModNone, GetCommand("left")},

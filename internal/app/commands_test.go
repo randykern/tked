@@ -22,7 +22,7 @@ func (d *dummyApp) GetStatusBar() StatusBar    { return d.sb }
 func (d *dummyApp) LoadSettings(string) error  { return nil }
 func (d *dummyApp) GetCurrentView() View       { return d.view }
 func (d *dummyApp) Views() []View              { return []View{d.view} }
-func (d *dummyApp) CloseView(View)             {}
+func (d *dummyApp) CloseView(View) bool        { return true }
 
 type stubStatusBar struct{}
 

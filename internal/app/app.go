@@ -25,8 +25,9 @@ type App interface {
 	GetCurrentView() View
 	// GetViews returns all the views in the application.
 	Views() []View
-	// CloseView closes the given view.
-	CloseView(view View)
+	// CloseView closes the given view. Returns true if the view was closed,
+	// false if the user cancelled the close.
+	CloseView(view View) bool
 }
 
 type app struct {
@@ -230,7 +231,7 @@ func (a *app) handleMouse(ev *tcell.EventMouse) {
 	}
 }
 
-func (a *app) CloseView(v View) {
+func (a *app) CloseView(v View) bool {
 	idx := slices.Index(a.views, v)
 	if idx == -1 {
 		tklog.Panic("view not found") // this is a bug not an error!
@@ -239,7 +240,7 @@ func (a *app) CloseView(v View) {
 	if v.Buffer().IsDirty() {
 		answer, ok := a.GetStatusBar().Input("Save changes? (y/n): ")
 		if !ok {
-			return
+			return false
 		}
 		if answer == "y" {
 			filename := v.Buffer().GetFilename()
@@ -247,15 +248,15 @@ func (a *app) CloseView(v View) {
 				var ok bool
 				filename, ok = a.GetStatusBar().Input("Save as: ")
 				if !ok {
-					return
+					return false
 				}
 			}
 			if err := v.Save(filename); err != nil {
 				a.GetStatusBar().Errorf("Error saving file: %v", err)
-				return
+				return false
 			}
 		} else if answer != "n" {
-			return
+			return false
 		}
 	}
 
@@ -272,6 +273,8 @@ func (a *app) CloseView(v View) {
 	} else if idx <= a.currentView && a.currentView > 0 {
 		a.currentView--
 	}
+
+	return true
 }
 
 var theApp App

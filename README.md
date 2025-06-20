@@ -26,15 +26,18 @@ Configuration is read from `~/.tked.toml` if it exists.
 
 ### Default Keybindings
 
-- `Esc`: Exit the editor
+- `Ctrl+D`: Exit the editor
+- `Ctrl+N`: New file
+- `Ctrl+O`: Open a new file
+- `Ctrl+S`: Save the current buffer
+- `Ctrl+W`: Save the current buffer to a new filename
+- `Ctrl+Q`: Close the current buffer, exiting if no buffers remain
 - `Up`: Move up a line
 - `Down`: Move down a line
 - `PgUp`: Move up a page
 - `PgDn`: Move down a page
 - `Ctrl+Z`: Undo the last edit
 - `Ctrl+R`: Redo the last undone edit
-- `Ctrl+S`: Save the current buffer
-- `Ctrl+O`: Open a new file
 
 
 ## Running Tests

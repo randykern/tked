@@ -19,7 +19,7 @@ func TestDefaultKeyBindingsIncludesExit(t *testing.T) {
 	commands = make(map[string]Command)
 	registerCommands()
 	kb := DefaultKeyBindings()
-	if kb.GetCommandForKey(tcell.KeyEscape, tcell.ModNone) == nil {
+	if kb.GetCommandForKey(tcell.KeyCtrlD, tcell.ModCtrl) == nil {
 		t.Fatalf("expected exit binding present")
 	}
 }

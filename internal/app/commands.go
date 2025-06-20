@@ -79,6 +79,26 @@ func (c *CommandSave) Execute(app App, ev *tcell.EventKey) (bool, error) {
 	return false, nil
 }
 
+type CommandSaveAs struct{}
+
+func (c *CommandSaveAs) Name() string { return "saveAs" }
+
+func (c *CommandSaveAs) Execute(app App, ev *tcell.EventKey) (bool, error) {
+	view := app.GetCurrentView()
+	if view != nil {
+		filename, ok := app.GetStatusBar().Input("Save as: ")
+		if !ok {
+			return false, nil
+		}
+		if err := view.Save(filename); err != nil {
+			return false, err
+		} else {
+			view.Buffer().SetFilename(filename)
+		}
+	}
+	return false, nil
+}
+
 type CommandOpen struct{}
 
 func (c *CommandOpen) Name() string { return "open" }
@@ -99,7 +119,16 @@ type CommandClose struct{}
 func (c *CommandClose) Name() string { return "close" }
 
 func (c *CommandClose) Execute(app App, ev *tcell.EventKey) (bool, error) {
-	app.CloseView(app.GetCurrentView())
+	onlyOneView := len(app.Views()) == 1
+	closed := app.CloseView(app.GetCurrentView())
+	if !closed {
+		return false, nil
+	}
+
+	if onlyOneView {
+		return true, nil
+	}
+
 	return false, nil
 }
 
@@ -199,6 +228,7 @@ func registerCommands() {
 	registerCommand("redo", &CommandRedo{})
 	registerCommand("new", &CommandNewFile{})
 	registerCommand("save", &CommandSave{})
+	registerCommand("saveAs", &CommandSaveAs{})
 	registerCommand("open", &CommandOpen{})
 	registerCommand("close", &CommandClose{})
 	registerCommand("up", &CommandMove{dRow: -1})
