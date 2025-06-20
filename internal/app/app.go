@@ -2,6 +2,7 @@ package app
 
 import (
 	"os"
+	"slices"
 
 	"github.com/gdamore/tcell/v2"
 
@@ -24,6 +25,8 @@ type App interface {
 	GetCurrentView() View
 	// GetViews returns all the views in the application.
 	Views() []View
+	// CloseView closes the given view.
+	CloseView(view View)
 }
 
 type app struct {
@@ -35,15 +38,20 @@ type app struct {
 }
 
 func (a *app) OpenFile(filename string) error {
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+	var view View
+	if filename == "" {
+		view = NewView("", nil)
+	} else {
+		file, err := os.Open(filename)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
 
-	view, err := NewViewFromReader(filename, file)
-	if err != nil {
-		return err
+		view, err = NewViewFromReader(filename, file)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Resize the view to match the current view's size
@@ -202,7 +210,7 @@ func (a *app) handleMouse(ev *tcell.EventMouse) {
 	case tcell.Button1:
 		if a.tabBar != nil {
 			if idx, ok := a.tabBar.CloseIndexAt(x, y); ok {
-				a.closeView(idx)
+				a.CloseView(a.views[idx])
 				return
 			}
 			if idx, ok := a.tabBar.ViewIndexAt(x, y); ok {
@@ -222,14 +230,14 @@ func (a *app) handleMouse(ev *tcell.EventMouse) {
 	}
 }
 
-func (a *app) closeView(idx int) {
-	if idx < 0 || idx >= len(a.views) {
-		return
+func (a *app) CloseView(v View) {
+	idx := slices.Index(a.views, v)
+	if idx == -1 {
+		tklog.Panic("view not found") // this is a bug not an error!
 	}
 
-	v := a.views[idx]
 	if v.Buffer().IsDirty() {
-		answer, ok := a.statusBar.Input("Save changes? (y/n): ")
+		answer, ok := a.GetStatusBar().Input("Save changes? (y/n): ")
 		if !ok {
 			return
 		}
@@ -237,13 +245,13 @@ func (a *app) closeView(idx int) {
 			filename := v.Buffer().GetFilename()
 			if filename == "" {
 				var ok bool
-				filename, ok = a.statusBar.Input("Save as: ")
+				filename, ok = a.GetStatusBar().Input("Save as: ")
 				if !ok {
 					return
 				}
 			}
 			if err := v.Save(filename); err != nil {
-				a.statusBar.Errorf("Error saving file: %v", err)
+				a.GetStatusBar().Errorf("Error saving file: %v", err)
 				return
 			}
 		} else if answer != "n" {
@@ -253,13 +261,13 @@ func (a *app) closeView(idx int) {
 
 	v.Buffer().Close()
 
+	// remove the view from the list
 	a.views = append(a.views[:idx], a.views[idx+1:]...)
 	if len(a.views) == 0 {
+		// Ensure we have at least one view open
 		a.views = []View{NewView("", nil)}
 		a.currentView = 0
-		return
-	}
-	if a.currentView >= len(a.views) {
+	} else if a.currentView >= len(a.views) {
 		a.currentView = len(a.views) - 1
 	} else if idx <= a.currentView && a.currentView > 0 {
 		a.currentView--

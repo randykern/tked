@@ -1,6 +1,8 @@
 package app
 
-import "github.com/gdamore/tcell/v2"
+import (
+	"github.com/gdamore/tcell/v2"
+)
 
 type CommandExit struct{}
 
@@ -46,6 +48,15 @@ func (c *CommandRedo) Execute(app App, ev *tcell.EventKey) (bool, error) {
 	return false, nil
 }
 
+type CommandNewFile struct{}
+
+func (c *CommandNewFile) Name() string { return "newFile" }
+
+func (c *CommandNewFile) Execute(app App, ev *tcell.EventKey) (bool, error) {
+	app.OpenFile("")
+	return false, nil
+}
+
 type CommandSave struct{}
 
 func (c *CommandSave) Name() string { return "save" }
@@ -80,6 +91,15 @@ func (c *CommandOpen) Execute(app App, ev *tcell.EventKey) (bool, error) {
 		}
 	}
 
+	return false, nil
+}
+
+type CommandClose struct{}
+
+func (c *CommandClose) Name() string { return "close" }
+
+func (c *CommandClose) Execute(app App, ev *tcell.EventKey) (bool, error) {
+	app.CloseView(app.GetCurrentView())
 	return false, nil
 }
 
@@ -177,8 +197,10 @@ func registerCommands() {
 	registerCommand("exit", &CommandExit{})
 	registerCommand("undo", &CommandUndo{})
 	registerCommand("redo", &CommandRedo{})
+	registerCommand("new", &CommandNewFile{})
 	registerCommand("save", &CommandSave{})
 	registerCommand("open", &CommandOpen{})
+	registerCommand("close", &CommandClose{})
 	registerCommand("up", &CommandMove{dRow: -1})
 	registerCommand("down", &CommandMove{dRow: 1})
 	registerCommand("left", &CommandMove{dCol: -1})
