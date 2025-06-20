@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"testing"
 
 	"go.lsp.dev/jsonrpc2"
 	"go.lsp.dev/protocol"
@@ -172,12 +171,15 @@ func startLSPClient(command string) (*lspClient, error) {
 	}
 
 	client := &lspClient{
-		name:                          command,
-		cancel:                        cancel,
-		conn:                          nil,
-		server:                        nil,
-		cmd:                           cmd,
-		serverTextDocumentSyncOptions: protocol.TextDocumentSyncOptions{},
+		name:   command,
+		cancel: cancel,
+		conn:   nil,
+		server: nil,
+		cmd:    cmd,
+		serverTextDocumentSyncOptions: protocol.TextDocumentSyncOptions{
+			OpenClose: false,
+			Change:    protocol.TextDocumentSyncKindNone,
+		},
 	}
 
 	rw := stdio{ReadCloser: stdout, WriteCloser: stdin}
@@ -256,17 +258,12 @@ func parseTextDocumentSyncOptions(textDocumentSync interface{}) protocol.TextDoc
 	return textDocumentSyncOptions
 }
 
-var activeLSPs map[string]*lspClient
+var activeLSPs map[string]LSPClient
 
 func GetLSP(filename string) LSPClient {
-	if testing.Testing() {
-		// TODO: This is a hack to work around a crash
-		return nil
-	}
-
 	// TODO: Concurrency?
 	if activeLSPs == nil {
-		activeLSPs = map[string]*lspClient{}
+		activeLSPs = map[string]LSPClient{}
 	}
 
 	if filename == "" {
@@ -275,7 +272,7 @@ func GetLSP(filename string) LSPClient {
 
 	// We use the file extension to determine the LSP client to use
 	ext := filepath.Ext(filename)
-	lspClient, ok := activeLSPs[ext]
+	client, ok := activeLSPs[ext]
 	if !ok {
 		// cache the nil value so we don't keep trying to create an LSP for this filetype
 		activeLSPs[ext] = nil
@@ -293,15 +290,15 @@ func GetLSP(filename string) LSPClient {
 		}
 
 		var err error
-		lspClient, err = startLSPClient(lspServerCommand)
+		client, err = startLSPClient(lspServerCommand)
 		if err != nil {
 			tklog.Error("failed to create LSP client for %s: %v", ext, err)
 		} else {
-			activeLSPs[ext] = lspClient
+			activeLSPs[ext] = client
 		}
 	}
 
-	return lspClient
+	return client
 }
 
 func ShutdownAll() {
@@ -310,6 +307,6 @@ func ShutdownAll() {
 	}
 
 	for _, lsp := range activeLSPs {
-		lsp.shutdown()
+		lsp.(*lspClient).shutdown()
 	}
 }
