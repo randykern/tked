@@ -307,6 +307,8 @@ func ShutdownAll() {
 	}
 
 	for _, lsp := range activeLSPs {
-		lsp.(*lspClient).shutdown()
+		if lsp != nil {
+			lsp.(*lspClient).shutdown()
+		}
 	}
 }
