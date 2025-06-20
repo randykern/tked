@@ -60,16 +60,3 @@ func TestViewDeleteRuneNewline(t *testing.T) {
 		t.Fatalf("delete newline failed, got %q", got)
 	}
 }
-
-func TestIndexForRowCol(t *testing.T) {
-	r := rope.NewRope("hello\nworld")
-	if idx := indexForRowCol(r, 1, 2); idx != 8 {
-		t.Fatalf("expected 8 got %d", idx)
-	}
-	if idx := indexForRowCol(r, 0, 3); idx != 3 {
-		t.Fatalf("expected 3 got %d", idx)
-	}
-	if idx := indexForRowCol(r, 2, 0); idx != r.Len() {
-		t.Fatalf("expected %d got %d", r.Len(), idx)
-	}
-}

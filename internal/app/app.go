@@ -88,7 +88,7 @@ func (a *app) Run(screen tcell.Screen) {
 	}
 
 	// Draw initial view
-	a.GetCurrentView().Draw(screen, a.settings.TabWidth(), 1, 0)
+	a.GetCurrentView().Draw(screen, 1, 0)
 
 	// Event loop
 eventLoop:
@@ -115,7 +115,7 @@ eventLoop:
 		if a.tabBar != nil {
 			a.tabBar.Draw(a.views, a.currentView)
 		}
-		a.GetCurrentView().Draw(screen, a.settings.TabWidth(), 1, 0)
+		a.GetCurrentView().Draw(screen, 1, 0)
 		a.statusBar.Draw(a.GetCurrentView())
 	}
 
@@ -171,11 +171,13 @@ func (a *app) handleResize(screen tcell.Screen) {
 }
 
 func (a *app) handleKey(ev *tcell.EventKey) bool {
-	if ev.Key() == tcell.KeyRune || ev.Key() == tcell.KeyEnter {
+	if ev.Key() == tcell.KeyRune || ev.Key() == tcell.KeyEnter || ev.Key() == tcell.KeyTab {
 		view := a.GetCurrentView()
 		r := ev.Rune()
 		if ev.Key() == tcell.KeyEnter {
 			r = '\n'
+		} else if ev.Key() == tcell.KeyTab {
+			r = '\t'
 		}
 		view.InsertRune(r)
 	} else {
@@ -292,4 +294,8 @@ func GetApp() App {
 	}
 
 	return theApp
+}
+
+func ResetApp() {
+	theApp = nil
 }

@@ -29,6 +29,11 @@ type Buffer interface {
 	// Returns true if the buffer has been modified since it was last saved.
 	IsDirty() bool
 
+	// IndexForRow returns the index for the first character of the requested
+	// row, and the second return value is the actual row in case the row argument
+	// is past the end of the buffer.
+	IndexForRow(row int) (int, int)
+
 	// TODO: Should we have a version that takes a rope?
 	// Insert modifies the buffer contents by inserting the given text at the specified index.
 	Insert(idx int, text string)
@@ -127,6 +132,32 @@ func (b *buffer) Contents() rope.Rope {
 
 func (b *buffer) IsDirty() bool {
 	return b.contents.dirty
+}
+
+func (b *buffer) IndexForRow(row int) (int, int) {
+	if row < 0 {
+		row = 0
+	}
+
+	// TODO: This is very slow. We should use a more efficient algorithm.
+	idxLastRow := 0
+	idx := 0
+	currRow := 0
+	for {
+		if currRow == row {
+			return idx, currRow
+		}
+
+		b, ok := b.contents.rope.Index(idx)
+		if !ok {
+			return idxLastRow, currRow
+		}
+		if b == '\n' {
+			currRow++
+			idxLastRow = idx // TODO: what if the last row is empty?
+		}
+		idx++
+	}
 }
 
 func (b *buffer) Insert(idx int, text string) {

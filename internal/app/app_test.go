@@ -10,6 +10,7 @@ import (
 func TestNewAppAndOpenFile(t *testing.T) {
 	commands = make(map[string]Command)
 	registerCommands()
+	ResetApp()
 	aInt, err := NewApp()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -39,6 +40,7 @@ func TestNewAppAndOpenFile(t *testing.T) {
 func TestHandleKeyEnter(t *testing.T) {
 	commands = make(map[string]Command)
 	registerCommands()
+	ResetApp()
 	aInt, err := NewApp()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -60,6 +62,7 @@ func TestHandleKeyEnter(t *testing.T) {
 func TestHandleMouseTabClick(t *testing.T) {
 	commands = make(map[string]Command)
 	registerCommands()
+	ResetApp()
 	aInt, err := NewApp()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -99,6 +102,7 @@ func (stubStatusBarClose) Input(string) (string, bool) { return "n", true }
 func TestHandleMouseTabClose(t *testing.T) {
 	commands = make(map[string]Command)
 	registerCommands()
+	ResetApp()
 	aInt, err := NewApp()
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

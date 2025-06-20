@@ -49,7 +49,7 @@ func TestCommandOpenExecute(t *testing.T) {
 }
 
 func TestCommandMoveExecute(t *testing.T) {
-	r := rope.NewRope("")
+	r := rope.NewRope("hello\nworld\n")
 	v := NewView("", r)
 	d := &dummyApp{view: v}
 	screen := tcell.NewSimulationScreen("")
