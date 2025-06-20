@@ -1,7 +1,11 @@
 package app
 
 import (
+	"slices"
+
 	"github.com/gdamore/tcell/v2"
+
+	"tked/internal/tklog"
 )
 
 type CommandExit struct{}
@@ -212,6 +216,42 @@ func (c *CommandPageDown) Execute(app App, ev *tcell.EventKey) (bool, error) {
 	return false, nil
 }
 
+type CommandNextView struct{}
+
+func (c *CommandNextView) Name() string { return "nextView" }
+
+func (c *CommandNextView) Execute(app App, ev *tcell.EventKey) (bool, error) {
+	nextview(app, 1)
+	return false, nil
+}
+
+type CommandPrevView struct{}
+
+func (c *CommandPrevView) Name() string { return "prevView" }
+
+func (c *CommandPrevView) Execute(app App, ev *tcell.EventKey) (bool, error) {
+	nextview(app, -1)
+	return false, nil
+}
+
+func nextview(app App, direction int) {
+	views := app.Views()
+	if len(views) > 1 {
+		idx := slices.Index(views, app.GetCurrentView())
+		if idx == -1 {
+			tklog.Panic("current view not found in views") // bug not an error!
+		}
+
+		idx += direction
+		if idx >= len(views) {
+			idx = 0 // wrap around
+		} else if idx < 0 {
+			idx = len(views) - 1 // wrap around
+		}
+		app.SetCurrentView(views[idx])
+	}
+}
+
 func scrollBy(view View, lines int) {
 	top, left := view.TopLeft()
 	top = max(0, top+lines)
@@ -239,4 +279,6 @@ func registerCommands() {
 	registerCommand("delete", &CommandDelete{})
 	registerCommand("pageup", &CommandPageUp{})
 	registerCommand("pagedown", &CommandPageDown{})
+	registerCommand("nextView", &CommandNextView{})
+	registerCommand("prevView", &CommandPrevView{})
 }

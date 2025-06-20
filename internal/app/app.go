@@ -23,6 +23,8 @@ type App interface {
 	GetStatusBar() StatusBar
 	// GetCurrentView returns the current view.
 	GetCurrentView() View
+	// SetCurrentView sets the current view.
+	SetCurrentView(view View)
 	// GetViews returns all the views in the application.
 	Views() []View
 	// CloseView closes the given view. Returns true if the view was closed,
@@ -161,6 +163,13 @@ func (a *app) GetCurrentView() View {
 	}
 
 	return a.views[a.currentView]
+}
+
+func (a *app) SetCurrentView(view View) {
+	a.currentView = slices.Index(a.views, view)
+	if a.currentView == -1 {
+		a.currentView = 0
+	}
 }
 
 func (a *app) Views() []View { return a.views }

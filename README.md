@@ -38,6 +38,8 @@ Configuration is read from `~/.tked.toml` if it exists.
 - `PgDn`: Move down a page
 - `Ctrl+Z`: Undo the last edit
 - `Ctrl+R`: Redo the last undone edit
+- `Alt+Left`: Move to previous view
+- `Alt+Right`: Move to next view
 
 
 ## Running Tests

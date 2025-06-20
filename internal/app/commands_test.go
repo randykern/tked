@@ -21,6 +21,7 @@ func (d *dummyApp) Settings() Settings         { return NewSettings() }
 func (d *dummyApp) GetStatusBar() StatusBar    { return d.sb }
 func (d *dummyApp) LoadSettings(string) error  { return nil }
 func (d *dummyApp) GetCurrentView() View       { return d.view }
+func (d *dummyApp) SetCurrentView(v View)      { d.view = v }
 func (d *dummyApp) Views() []View              { return []View{d.view} }
 func (d *dummyApp) CloseView(View) bool        { return true }
 

@@ -50,5 +50,7 @@ func DefaultKeyBindings() KeyBindings {
 		{tcell.KeyDelete, tcell.ModNone, GetCommand("delete")},
 		{tcell.KeyPgUp, tcell.ModNone, GetCommand("pageup")},
 		{tcell.KeyPgDn, tcell.ModNone, GetCommand("pagedown")},
+		{tcell.KeyRight, tcell.ModAlt, GetCommand("nextView")},
+		{tcell.KeyLeft, tcell.ModAlt, GetCommand("prevView")},
 	})
 }
