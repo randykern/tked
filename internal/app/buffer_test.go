@@ -109,3 +109,91 @@ func TestNewBufferLoadsFile(t *testing.T) {
 		t.Fatalf("filename not set")
 	}
 }
+
+func TestBufferIndexForRow(t *testing.T) {
+	b := NewBuffer("", rope.NewRope("a\nb\nc"))
+
+	idx, row := b.IndexForRow(0)
+	if idx != 0 || row != 0 {
+		t.Fatalf("expected row 0 index 0 got row %d index %d", row, idx)
+	}
+
+	idx, row = b.IndexForRow(1)
+	if idx != 2 || row != 1 {
+		t.Fatalf("expected row 1 index 2 got row %d index %d", row, idx)
+	}
+
+	idx, row = b.IndexForRow(10)
+	if idx != 4 || row != 2 {
+		t.Fatalf("expected last row index 4 got row %d index %d", row, idx)
+	}
+
+	idx, row = b.IndexForRow(-5)
+	if idx != 0 || row != 0 {
+		t.Fatalf("expected negative row clamp to 0 got row %d index %d", row, idx)
+	}
+}
+
+func TestBufferUndoRedoAndProperties(t *testing.T) {
+	b := NewBuffer("", rope.NewRope("a"))
+	prop := RegisterBufferProperty()
+	b.SetProperty(prop, "initial")
+
+	b.Insert(1, "b")
+	b.SetProperty(prop, "after insert")
+
+	b.Delete(0, 1)
+
+	b.Undo()
+	if b.Contents().String() != "ab" {
+		t.Fatalf("undo delete failed, got %q", b.Contents().String())
+	}
+	if b.GetProperty(prop) != "after insert" {
+		t.Fatalf("property not restored on undo")
+	}
+
+	b.Undo()
+	if b.Contents().String() != "a" {
+		t.Fatalf("undo insert failed, got %q", b.Contents().String())
+	}
+	if b.GetProperty(prop) != "initial" {
+		t.Fatalf("property not restored after second undo")
+	}
+
+	b.Redo()
+	if b.Contents().String() != "ab" {
+		t.Fatalf("redo insert failed, got %q", b.Contents().String())
+	}
+	if b.GetProperty(prop) != "after insert" {
+		t.Fatalf("property not restored after redo")
+	}
+}
+
+func TestBufferOnChange(t *testing.T) {
+	b := NewBuffer("", rope.NewRope("abc"))
+	calls := 0
+	var lastStart, lastEnd int
+	reg := b.OnChange(func(_ Buffer, start, end int, _ any) {
+		calls++
+		lastStart = start
+		lastEnd = end
+	}, nil)
+
+	b.Insert(1, "x")
+	if calls != 1 || lastStart != 1 || lastEnd != 2 {
+		t.Fatalf("callback values unexpected: calls %d start %d end %d", calls, lastStart, lastEnd)
+	}
+
+	b.Delete(0, 1)
+	if calls != 2 || lastStart != 0 || lastEnd != 1 {
+		t.Fatalf("callback after delete unexpected: calls %d start %d end %d", calls, lastStart, lastEnd)
+	}
+
+	reg.Remove()
+	b.Insert(0, "y")
+	if calls != 2 {
+		t.Fatalf("callback not removed")
+	}
+	_ = lastStart
+	_ = lastEnd
+}

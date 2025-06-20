@@ -140,3 +140,24 @@ func TestIndex(t *testing.T) {
 		t.Fatalf("expected false for out of range index")
 	}
 }
+
+func TestNewFromReaderNil(t *testing.T) {
+	r, err := NewFromReader(nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if r.Len() != 0 || r.String() != "" {
+		t.Fatalf("expected empty rope from nil reader")
+	}
+}
+
+func TestWriteNil(t *testing.T) {
+	r := NewRope("data")
+	n, err := r.Write(nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("expected 0 bytes written got %d", n)
+	}
+}
