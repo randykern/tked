@@ -1,6 +1,8 @@
 package app
 
-import "github.com/gdamore/tcell/v2"
+import (
+	"github.com/gdamore/tcell/v2"
+)
 
 // TabBar describes the behaviour of a tab bar component.
 type TabBar interface {
@@ -45,9 +47,6 @@ func (tb *tabBar) Draw(views []View, current int) {
 	col := 0
 	for i, v := range views {
 		title := v.Buffer().GetTitle()
-		if title == "" {
-			title = "Untitled"
-		}
 		if v.Buffer().IsDirty() {
 			title += "*"
 		}

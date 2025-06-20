@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"io"
 	"path/filepath"
 
@@ -105,6 +106,8 @@ type changeCallback struct {
 	context  any
 }
 
+var untitledCounter int = 0
+
 func (b *buffer) GetVersion() int32 {
 	return b.version
 }
@@ -116,6 +119,10 @@ func (b *buffer) GetFilename() string {
 func (b *buffer) SetFilename(filename string) {
 	b.filename = filename
 	b.title = filepath.Base(filename)
+	if b.filename == "" {
+		b.title = fmt.Sprintf("Untitled %d", untitledCounter)
+		untitledCounter++
+	}
 }
 
 func (b *buffer) GetTitle() string {
