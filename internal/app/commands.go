@@ -170,7 +170,19 @@ func (c *CommandMove) Execute(app App, ev *tcell.EventKey) (bool, error) {
 			view.SetAnchor(oldRow, oldCol)
 			aRow, aCol = oldRow, oldCol
 		}
-		sel := orderedSelection(aRow, aCol, row, col)
+
+		// Always use anchor and current cursor for selection
+		// If anchor is after cursor, extend anchor by +1 col (or handle multiline)
+		cRow, cCol := view.Cursor()
+		startRow, startCol, endRow, endCol := aRow, aCol, cRow, cCol
+		if (aRow > cRow) || (aRow == cRow && aCol > cCol) {
+			// Anchor is after cursor, so extend anchor by +1 col
+			if aCol+1 >= 0 { // always true, but for clarity
+				startRow, startCol = cRow, cCol
+				endRow, endCol = aRow, aCol+1
+			}
+		}
+		sel := orderedSelection(startRow, startCol, endRow, endCol)
 		view.SetSelections([]Selection{sel})
 	} else {
 		view.ClearAnchor()
