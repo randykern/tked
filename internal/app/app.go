@@ -233,17 +233,27 @@ func (a *app) handleMouse(ev *tcell.EventMouse) {
 
 		top, left := view.TopLeft()
 		oldRow, oldCol := view.Cursor()
-		view.SetCursor(top+y-1, left+x)
+
 		if ev.Modifiers()&tcell.ModShift != 0 {
 			aRow, aCol, ok := view.Anchor()
 			if !ok {
 				view.SetAnchor(oldRow, oldCol)
 				aRow, aCol = oldRow, oldCol
 			}
+			view.SetCursor(top+y-1, left+x)
 			row, col := view.Cursor()
-			sel := orderedSelection(aRow, aCol, row, col)
+
+			// Use the same selection logic as keyboard: always include character under anchor
+			startRow, startCol, endRow, endCol := aRow, aCol, row, col
+			if (aRow > row) || (aRow == row && aCol > col) {
+				// Anchor is after cursor, so extend anchor by +1 col
+				startRow, startCol = row, col
+				endRow, endCol = aRow, aCol+1
+			}
+			sel := orderedSelection(startRow, startCol, endRow, endCol)
 			view.SetSelections([]Selection{sel})
 		} else {
+			view.SetCursor(top+y-1, left+x)
 			view.ClearAnchor()
 			view.SetSelections(nil)
 		}

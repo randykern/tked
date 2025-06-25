@@ -203,7 +203,7 @@ func TestHandleMouseShiftSelectReverse(t *testing.T) {
 	a.handleMouse(ev)
 
 	sels := v.Selections()
-	if len(sels) != 1 || sels[0].StartCol != 0 || sels[0].EndCol != 2 {
+	if len(sels) != 1 || sels[0].StartCol != 0 || sels[0].EndCol != 3 {
 		t.Fatalf("unexpected selection %#v", sels)
 	}
 }
