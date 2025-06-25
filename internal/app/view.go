@@ -241,6 +241,7 @@ func (v *view) DeleteRune(forward bool) {
 func (v *view) Draw(screen tcell.Screen, topOffset, leftOffset int) {
 	viewHeight, viewWidth := v.Size()
 	viewTop, viewLeft := v.TopLeft()
+	selections := v.Selections()
 
 	idxRowStart, _ := v.buffer.IndexForRow(viewTop)
 	for row := viewTop; row < viewTop+viewHeight; row++ {
@@ -250,7 +251,11 @@ func (v *view) Draw(screen tcell.Screen, topOffset, leftOffset int) {
 		} else {
 			for col, colInfo := range colInfos {
 				if col >= viewLeft && col < viewLeft+viewWidth {
-					screen.SetContent(leftOffset+col-viewLeft, topOffset+row-viewTop, colInfo.r, nil, tcell.StyleDefault)
+					style := tcell.StyleDefault
+					if isSelected(selections, row, col) {
+						style = style.Reverse(true)
+					}
+					screen.SetContent(leftOffset+col-viewLeft, topOffset+row-viewTop, colInfo.r, nil, style)
 				}
 				idxRowStart = colInfo.idx + 2
 			}
@@ -409,4 +414,28 @@ func parseRow(buffer Buffer, row int, idxStart int) []colInfo {
 	}
 
 	return colInfos
+}
+
+func isSelected(selections []Selection, row, col int) bool {
+	for _, s := range selections {
+		if row < s.StartRow || row > s.EndRow {
+			continue
+		}
+		if s.StartRow == s.EndRow {
+			if col >= s.StartCol && col < s.EndCol {
+				return true
+			}
+		} else if row == s.StartRow {
+			if col >= s.StartCol {
+				return true
+			}
+		} else if row == s.EndRow {
+			if col < s.EndCol {
+				return true
+			}
+		} else {
+			return true
+		}
+	}
+	return false
 }
