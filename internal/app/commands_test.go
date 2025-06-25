@@ -149,3 +149,22 @@ func TestCommandMoveExecuteShift(t *testing.T) {
 		t.Fatalf("expected selection cleared")
 	}
 }
+
+func TestCommandMoveExecuteShiftReverse(t *testing.T) {
+	commands = make(map[string]Command)
+	registerCommands()
+	v := NewView("", rope.NewRope("abc"))
+	d := &dummyApp{view: v}
+	ev := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModShift)
+	c := &CommandMove{dCol: -1}
+
+	v.SetCursor(0, 2)
+	if _, err := c.Execute(d, ev); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	sels := v.Selections()
+	if len(sels) != 1 || sels[0].StartCol != 1 || sels[0].EndCol != 2 {
+		t.Fatalf("unexpected selection %#v", sels)
+	}
+}

@@ -87,6 +87,15 @@ type Selection struct {
 	EndCol   int
 }
 
+// orderedSelection returns a Selection with start and end points ordered such
+// that the start position is before the end position in the buffer.
+func orderedSelection(aRow, aCol, row, col int) Selection {
+	if row < aRow || (row == aRow && col < aCol) {
+		return Selection{StartRow: row, StartCol: col, EndRow: aRow, EndCol: aCol}
+	}
+	return Selection{StartRow: aRow, StartCol: aCol, EndRow: row, EndCol: col}
+}
+
 func (v *view) Buffer() Buffer {
 	return v.buffer
 }
