@@ -171,6 +171,14 @@ func (c *CommandMove) Execute(app App, ev *tcell.EventKey) (bool, error) {
 			aRow, aCol = oldRow, oldCol
 		}
 		sel := orderedSelection(aRow, aCol, row, col)
+		if (c.dRow < 0 || c.dCol < 0) && (aRow < row || (aRow == row && aCol < col)) {
+			if c.dRow != 0 {
+				sel.EndRow = row + 1
+				sel.EndCol = 0
+			} else {
+				sel.EndCol = col + 1
+			}
+		}
 		view.SetSelections([]Selection{sel})
 	} else {
 		view.ClearAnchor()
