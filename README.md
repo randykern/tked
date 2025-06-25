@@ -16,10 +16,10 @@ This produces a `tked` executable in the current directory.
 
 ## Usage
 
-Run the editor with an optional file name:
+Run the editor with one or more optional file names:
 
 ```bash
-tked [file]
+tked [file...]
 ```
 
 Configuration is read from `~/.tked.toml` if it exists.

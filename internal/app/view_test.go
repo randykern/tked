@@ -3,6 +3,8 @@ package app
 import (
 	"testing"
 
+	"github.com/gdamore/tcell/v2"
+
 	"tked/internal/rope"
 )
 
@@ -58,6 +60,24 @@ func TestViewDeleteRuneNewline(t *testing.T) {
 	v2.DeleteRune(true)
 	if got := v2.Buffer().Contents().String(); got != "ab" {
 		t.Fatalf("delete newline failed, got %q", got)
+	}
+}
+
+func TestViewDeleteRuneSelection(t *testing.T) {
+	v := NewView("", rope.NewRope("hello"))
+	sel := []Selection{{StartRow: 0, StartCol: 1, EndRow: 0, EndCol: 3}}
+	v.SetSelections(sel)
+	v.SetCursor(0, 3)
+	v.DeleteRune(false)
+	if got := v.Buffer().Contents().String(); got != "hlo" {
+		t.Fatalf("expected 'hlo' got %q", got)
+	}
+	row, col := v.Cursor()
+	if row != 0 || col != 1 {
+		t.Fatalf("expected cursor (0,1) got (%d,%d)", row, col)
+	}
+	if len(v.Selections()) != 0 {
+		t.Fatalf("expected selections cleared")
 	}
 }
 
@@ -365,5 +385,64 @@ func TestViewInsertRune_ReplacesSelection(t *testing.T) {
 	row, col := v.Cursor()
 	if row != 0 || col != 2 {
 		t.Fatalf("expected cursor (0,2) got (%d,%d)", row, col)
+}
+  
+func TestViewDrawSelectedText(t *testing.T) {
+	v := NewView("", rope.NewRope("hello"))
+	v.Resize(1, 5)
+	v.SetSelections([]Selection{{StartRow: 0, StartCol: 1, EndRow: 0, EndCol: 4}})
+
+	screen := tcell.NewSimulationScreen("")
+	screen.Init()
+	screen.SetSize(5, 1)
+	v.Draw(screen, 0, 0)
+
+	for col, r := range []rune("hello") {
+		ch, _, style, _ := screen.GetContent(col, 0)
+		if ch != r {
+			t.Fatalf("expected rune %c at col %d got %c", r, col, ch)
+		}
+		_, _, attr := style.Decompose()
+		if col > 0 && col < 4 {
+			if attr&tcell.AttrReverse == 0 {
+				t.Fatalf("expected selection at col %d", col)
+			}
+		} else {
+			if attr&tcell.AttrReverse != 0 {
+				t.Fatalf("unexpected selection at col %d", col)
+			}
+		}
+	}
+}
+
+func TestViewDrawSelectedTextMultiLine(t *testing.T) {
+	v := NewView("", rope.NewRope("hello\nworld"))
+	v.Resize(2, 5)
+	v.SetSelections([]Selection{{StartRow: 0, StartCol: 2, EndRow: 1, EndCol: 3}})
+
+	screen := tcell.NewSimulationScreen("")
+	screen.Init()
+	screen.SetSize(5, 2)
+	v.Draw(screen, 0, 0)
+
+	expected := []string{"hello", "world"}
+	for row := 0; row < 2; row++ {
+		for col, r := range []rune(expected[row]) {
+			ch, _, style, _ := screen.GetContent(col, row)
+			if ch != r {
+				t.Fatalf("row %d col %d expected %c got %c", row, col, r, ch)
+			}
+			_, _, attr := style.Decompose()
+			sel := (row == 0 && col >= 2) || (row == 1 && col < 3)
+			if sel {
+				if attr&tcell.AttrReverse == 0 {
+					t.Fatalf("expected selection at row %d col %d", row, col)
+				}
+			} else {
+				if attr&tcell.AttrReverse != 0 {
+					t.Fatalf("unexpected selection at row %d col %d", row, col)
+				}
+			}
+		}
 	}
 }

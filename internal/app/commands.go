@@ -157,12 +157,37 @@ func (c *CommandMove) Name() string {
 
 func (c *CommandMove) Execute(app App, ev *tcell.EventKey) (bool, error) {
 	view := app.GetCurrentView()
-	row, col := view.Cursor()
-	row += c.dRow
-	col += c.dCol
+	oldRow, oldCol := view.Cursor()
+	row := oldRow + c.dRow
+	col := oldCol + c.dCol
 	row = max(0, row)
 	col = max(0, col)
 	view.SetCursor(row, col)
+
+	if ev != nil && ev.Modifiers()&tcell.ModShift != 0 {
+		aRow, aCol, ok := view.Anchor()
+		if !ok {
+			view.SetAnchor(oldRow, oldCol)
+			aRow, aCol = oldRow, oldCol
+		}
+
+		// Always use anchor and current cursor for selection
+		// If anchor is after cursor, extend anchor by +1 col (or handle multiline)
+		cRow, cCol := view.Cursor()
+		startRow, startCol, endRow, endCol := aRow, aCol, cRow, cCol
+		if (aRow > cRow) || (aRow == cRow && aCol > cCol) {
+			// Anchor is after cursor, so extend anchor by +1 col
+			if aCol+1 >= 0 { // always true, but for clarity
+				startRow, startCol = cRow, cCol
+				endRow, endCol = aRow, aCol+1
+			}
+		}
+		sel := orderedSelection(startRow, startCol, endRow, endCol)
+		view.SetSelections([]Selection{sel})
+	} else {
+		view.ClearAnchor()
+		view.SetSelections(nil)
+	}
 	return false, nil
 }
 

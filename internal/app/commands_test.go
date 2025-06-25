@@ -106,3 +106,65 @@ func TestCommandMoveName(t *testing.T) {
 		}
 	}
 }
+
+func TestCommandMoveExecuteShift(t *testing.T) {
+	commands = make(map[string]Command)
+	registerCommands()
+	v := NewView("", rope.NewRope("abc"))
+	d := &dummyApp{view: v}
+	ev := tcell.NewEventKey(tcell.KeyRight, 0, tcell.ModShift)
+	c := &CommandMove{dCol: 1}
+
+	v.SetCursor(0, 0)
+	if _, err := c.Execute(d, ev); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	if _, _, ok := v.Anchor(); !ok {
+		t.Fatalf("expected anchor to be set")
+	}
+
+	sels := v.Selections()
+	if len(sels) != 1 || sels[0].StartRow != 0 || sels[0].StartCol != 0 || sels[0].EndRow != 0 || sels[0].EndCol != 1 {
+		t.Fatalf("unexpected selection %#v", sels)
+	}
+
+	// move again with shift to extend selection
+	if _, err := c.Execute(d, ev); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	sels = v.Selections()
+	if len(sels) != 1 || sels[0].EndCol != 2 {
+		t.Fatalf("selection not extended %#v", sels)
+	}
+
+	// move without shift should clear selection
+	evNo := tcell.NewEventKey(tcell.KeyRight, 0, tcell.ModNone)
+	if _, err := c.Execute(d, evNo); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	if len(v.Selections()) != 0 {
+		t.Fatalf("expected selection cleared")
+	}
+}
+
+func TestCommandMoveExecuteShiftReverse(t *testing.T) {
+	commands = make(map[string]Command)
+	registerCommands()
+	v := NewView("", rope.NewRope("abc"))
+	d := &dummyApp{view: v}
+	ev := tcell.NewEventKey(tcell.KeyLeft, 0, tcell.ModShift)
+	c := &CommandMove{dCol: -1}
+
+	v.SetCursor(0, 2)
+	if _, err := c.Execute(d, ev); err != nil {
+		t.Fatalf("error: %v", err)
+	}
+
+	sels := v.Selections()
+	if len(sels) != 1 || sels[0].StartCol != 1 || sels[0].EndCol != 3 {
+		t.Fatalf("unexpected selection %#v", sels)
+	}
+}

@@ -232,7 +232,31 @@ func (a *app) handleMouse(ev *tcell.EventMouse) {
 		}
 
 		top, left := view.TopLeft()
-		view.SetCursor(top+y-1, left+x)
+		oldRow, oldCol := view.Cursor()
+
+		if ev.Modifiers()&tcell.ModShift != 0 {
+			aRow, aCol, ok := view.Anchor()
+			if !ok {
+				view.SetAnchor(oldRow, oldCol)
+				aRow, aCol = oldRow, oldCol
+			}
+			view.SetCursor(top+y-1, left+x)
+			row, col := view.Cursor()
+
+			// Use the same selection logic as keyboard: always include character under anchor
+			startRow, startCol, endRow, endCol := aRow, aCol, row, col
+			if (aRow > row) || (aRow == row && aCol > col) {
+				// Anchor is after cursor, so extend anchor by +1 col
+				startRow, startCol = row, col
+				endRow, endCol = aRow, aCol+1
+			}
+			sel := orderedSelection(startRow, startCol, endRow, endCol)
+			view.SetSelections([]Selection{sel})
+		} else {
+			view.SetCursor(top+y-1, left+x)
+			view.ClearAnchor()
+			view.SetSelections(nil)
+		}
 	case tcell.WheelUp:
 		scrollBy(view, -1)
 	case tcell.WheelDown:

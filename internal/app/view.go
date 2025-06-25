@@ -38,6 +38,13 @@ type View interface {
 	// SetSelections replaces the current list of selections.
 	SetSelections(selections []Selection)
 
+	// Anchor returns the selection anchor position if present.
+	Anchor() (int, int, bool)
+	// SetAnchor updates the selection anchor position.
+	SetAnchor(row, col int)
+	// ClearAnchor removes the selection anchor.
+	ClearAnchor()
+
 	// InsertRune inserts a rune into the buffer at the cursor position.
 	InsertRune(r rune)
 	// DeleteRune deletes a rune. When forward is true it deletes the rune
@@ -60,6 +67,10 @@ type view struct {
 	height int
 	top    int
 	left   int
+
+	// anchor holds the position where a selection started. When nil, there
+	// is no active selection anchor.
+	anchor *cursor
 }
 
 type cursor struct {
@@ -74,6 +85,15 @@ type Selection struct {
 	StartCol int
 	EndRow   int
 	EndCol   int
+}
+
+// orderedSelection returns a Selection with start and end points ordered such
+// that the start position is before the end position in the buffer.
+func orderedSelection(aRow, aCol, row, col int) Selection {
+	if row < aRow || (row == aRow && col < aCol) {
+		return Selection{StartRow: row, StartCol: col, EndRow: aRow, EndCol: aCol}
+	}
+	return Selection{StartRow: aRow, StartCol: aCol, EndRow: row, EndCol: col}
 }
 
 func (v *view) Buffer() Buffer {
@@ -146,6 +166,25 @@ func (v *view) SetSelections(selections []Selection) {
 	v.buffer.SetProperty(selectionsProp, copySelections)
 }
 
+// Anchor returns the current selection anchor. The boolean return value is
+// false when there is no active anchor.
+func (v *view) Anchor() (int, int, bool) {
+	if v.anchor == nil {
+		return 0, 0, false
+	}
+	return v.anchor.row, v.anchor.col, true
+}
+
+// SetAnchor sets the selection anchor to the provided position.
+func (v *view) SetAnchor(row, col int) {
+	v.anchor = &cursor{row: row, col: col}
+}
+
+// ClearAnchor removes any active selection anchor.
+func (v *view) ClearAnchor() {
+	v.anchor = nil
+}
+
 func (v *view) InsertRune(r rune) {
 	sels := v.Selections()
 	if len(sels) > 0 {
@@ -192,6 +231,17 @@ func (v *view) InsertRune(r rune) {
 }
 
 func (v *view) DeleteRune(forward bool) {
+	// If there is a selection, delete the selected text and clear selections.
+	selections := v.Selections()
+	if len(selections) > 0 {
+		startIdx := v.indexForRowCol(selections[0].StartRow, selections[0].StartCol)
+		endIdx := v.indexForRowCol(selections[0].EndRow, selections[0].EndCol)
+		v.buffer.Delete(startIdx, endIdx)
+		v.SetCursor(selections[0].StartRow, selections[0].StartCol)
+		v.SetSelections([]Selection{})
+		return
+	}
+
 	cursorRow, cursorCol := v.Cursor()
 
 	idxForRow, cursorRow := v.buffer.IndexForRow(cursorRow)
@@ -250,6 +300,7 @@ func (v *view) DeleteRune(forward bool) {
 func (v *view) Draw(screen tcell.Screen, topOffset, leftOffset int) {
 	viewHeight, viewWidth := v.Size()
 	viewTop, viewLeft := v.TopLeft()
+	selections := v.Selections()
 
 	idxRowStart, _ := v.buffer.IndexForRow(viewTop)
 	for row := viewTop; row < viewTop+viewHeight; row++ {
@@ -259,7 +310,11 @@ func (v *view) Draw(screen tcell.Screen, topOffset, leftOffset int) {
 		} else {
 			for col, colInfo := range colInfos {
 				if col >= viewLeft && col < viewLeft+viewWidth {
-					screen.SetContent(leftOffset+col-viewLeft, topOffset+row-viewTop, colInfo.r, nil, tcell.StyleDefault)
+					style := tcell.StyleDefault
+					if isSelected(selections, row, col) {
+						style = style.Reverse(true)
+					}
+					screen.SetContent(leftOffset+col-viewLeft, topOffset+row-viewTop, colInfo.r, nil, style)
 				}
 				idxRowStart = colInfo.idx + 2
 			}
@@ -347,6 +402,7 @@ func NewView(filename string, contents rope.Rope) View {
 		height: 24,
 		top:    0,
 		left:   0,
+		anchor: nil,
 	}
 	v.SetCursor(0, 0)
 	v.SetSelections([]Selection{})
@@ -379,6 +435,19 @@ type colInfo struct {
 	newChar bool
 	r       rune
 	idx     int
+}
+
+func (v *view) indexForRowCol(row, col int) int {
+	idxRowStart, actualRow := v.buffer.IndexForRow(row)
+	row = actualRow
+	colInfos := parseRow(v.buffer, row, idxRowStart)
+	if len(colInfos) == 0 {
+		return idxRowStart
+	}
+	if col >= len(colInfos) {
+		return colInfos[len(colInfos)-1].idx + 1
+	}
+	return colInfos[col].idx
 }
 
 func parseRow(buffer Buffer, row int, idxStart int) []colInfo {
@@ -430,4 +499,28 @@ func indexForPosition(buffer Buffer, row, col int) int {
 		return colInfos[len(colInfos)-1].idx + 1
 	}
 	return colInfos[col].idx
+}
+
+func isSelected(selections []Selection, row, col int) bool {
+	for _, s := range selections {
+		if row < s.StartRow || row > s.EndRow {
+			continue
+		}
+		if s.StartRow == s.EndRow {
+			if col >= s.StartCol && col < s.EndCol {
+				return true
+			}
+		} else if row == s.StartRow {
+			if col >= s.StartCol {
+				return true
+			}
+		} else if row == s.EndRow {
+			if col < s.EndCol {
+				return true
+			}
+		} else {
+			return true
+		}
+	}
+	return false
 }

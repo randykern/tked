@@ -32,11 +32,9 @@ func main() {
 		log.Fatalf("Failed to load settings: %v", err)
 	}
 
-	// Was a filename provided on the command line? If so, open it.
+	// Were file names provided on the command line? If so, open them all.
 	if flag.NArg() > 0 {
-		filename := flag.Arg(0)
-		err = application.OpenFile(filename)
-		if err != nil {
+		if err = openFiles(application, flag.Args()); err != nil {
 			log.Fatalf("Failed to open file: %v", err)
 		}
 	}
