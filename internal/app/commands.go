@@ -170,7 +170,8 @@ func (c *CommandMove) Execute(app App, ev *tcell.EventKey) (bool, error) {
 			view.SetAnchor(oldRow, oldCol)
 			aRow, aCol = oldRow, oldCol
 		}
-		view.SetSelections([]Selection{{StartRow: aRow, StartCol: aCol, EndRow: row, EndCol: col}})
+		sel := orderedSelection(aRow, aCol, row, col)
+		view.SetSelections([]Selection{sel})
 	} else {
 		view.ClearAnchor()
 		view.SetSelections(nil)

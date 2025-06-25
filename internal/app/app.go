@@ -241,7 +241,8 @@ func (a *app) handleMouse(ev *tcell.EventMouse) {
 				aRow, aCol = oldRow, oldCol
 			}
 			row, col := view.Cursor()
-			view.SetSelections([]Selection{{StartRow: aRow, StartCol: aCol, EndRow: row, EndCol: col}})
+			sel := orderedSelection(aRow, aCol, row, col)
+			view.SetSelections([]Selection{sel})
 		} else {
 			view.ClearAnchor()
 			view.SetSelections(nil)

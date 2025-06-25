@@ -176,3 +176,34 @@ func TestHandleMouseShiftSelect(t *testing.T) {
 		t.Fatalf("expected anchor cleared")
 	}
 }
+
+func TestHandleMouseShiftSelectReverse(t *testing.T) {
+	commands = make(map[string]Command)
+	registerCommands()
+	ResetApp()
+	aInt, err := NewApp()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	a := aInt.(*app)
+	screen := tcell.NewSimulationScreen("")
+	screen.Init()
+	screen.SetSize(20, 5)
+	a.statusBar.SetScreen(screen)
+
+	v := a.GetCurrentView()
+	v.Resize(4, 20)
+	v.SetCursor(0, 0)
+	v.InsertRune('a')
+	v.InsertRune('b')
+	v.InsertRune('c')
+	v.SetCursor(0, 2)
+
+	ev := tcell.NewEventMouse(0, 1, tcell.Button1, tcell.ModShift)
+	a.handleMouse(ev)
+
+	sels := v.Selections()
+	if len(sels) != 1 || sels[0].StartCol != 0 || sels[0].EndCol != 2 {
+		t.Fatalf("unexpected selection %#v", sels)
+	}
+}
