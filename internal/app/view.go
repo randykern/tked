@@ -38,6 +38,13 @@ type View interface {
 	// SetSelections replaces the current list of selections.
 	SetSelections(selections []Selection)
 
+	// Anchor returns the selection anchor position if present.
+	Anchor() (int, int, bool)
+	// SetAnchor updates the selection anchor position.
+	SetAnchor(row, col int)
+	// ClearAnchor removes the selection anchor.
+	ClearAnchor()
+
 	// InsertRune inserts a rune into the buffer at the cursor position.
 	InsertRune(r rune)
 	// DeleteRune deletes a rune. When forward is true it deletes the rune
@@ -60,6 +67,10 @@ type view struct {
 	height int
 	top    int
 	left   int
+
+	// anchor holds the position where a selection started. When nil, there
+	// is no active selection anchor.
+	anchor *cursor
 }
 
 type cursor struct {
@@ -144,6 +155,25 @@ func (v *view) SetSelections(selections []Selection) {
 	copySelections := make([]Selection, len(selections))
 	copy(copySelections, selections)
 	v.buffer.SetProperty(selectionsProp, copySelections)
+}
+
+// Anchor returns the current selection anchor. The boolean return value is
+// false when there is no active anchor.
+func (v *view) Anchor() (int, int, bool) {
+	if v.anchor == nil {
+		return 0, 0, false
+	}
+	return v.anchor.row, v.anchor.col, true
+}
+
+// SetAnchor sets the selection anchor to the provided position.
+func (v *view) SetAnchor(row, col int) {
+	v.anchor = &cursor{row: row, col: col}
+}
+
+// ClearAnchor removes any active selection anchor.
+func (v *view) ClearAnchor() {
+	v.anchor = nil
 }
 
 func (v *view) InsertRune(r rune) {
@@ -338,6 +368,7 @@ func NewView(filename string, contents rope.Rope) View {
 		height: 24,
 		top:    0,
 		left:   0,
+		anchor: nil,
 	}
 	v.SetCursor(0, 0)
 	v.SetSelections([]Selection{})
