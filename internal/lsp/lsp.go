@@ -143,6 +143,8 @@ func (lspClient) WorkspaceFolders(context.Context) ([]protocol.WorkspaceFolder, 
 	return nil, nil
 }
 
+var startLSPClientFunc = startLSPClient
+
 func startLSPClient(command string) (*lspClient, error) {
 	workspaceFolder, err := os.Getwd()
 	if err != nil {
@@ -290,7 +292,7 @@ func GetLSP(filename string) LSPClient {
 		}
 
 		var err error
-		client, err = startLSPClient(lspServerCommand)
+		client, err = startLSPClientFunc(lspServerCommand)
 		if err != nil {
 			tklog.Error("failed to create LSP client for %s: %v", ext, err)
 		} else {
