@@ -385,8 +385,15 @@ func TestViewInsertRune_ReplacesSelection(t *testing.T) {
 	row, col := v.Cursor()
 	if row != 0 || col != 2 {
 		t.Fatalf("expected cursor (0,2) got (%d,%d)", row, col)
+	}
 }
-  
+
+func TestViewInsertRune_SelectionWithBackspace(t *testing.T) {
+	v := NewView("", rope.NewRope("abcde"))
+	v.SetSelections([]Selection{{StartRow: 0, StartCol: 1, EndRow: 0, EndCol: 3}})
+	v.SetCursor(0, 3)
+	v.InsertRune('X')
+}
 func TestViewDrawSelectedText(t *testing.T) {
 	v := NewView("", rope.NewRope("hello"))
 	v.Resize(1, 5)
@@ -414,7 +421,6 @@ func TestViewDrawSelectedText(t *testing.T) {
 		}
 	}
 }
-
 func TestViewDrawSelectedTextMultiLine(t *testing.T) {
 	v := NewView("", rope.NewRope("hello\nworld"))
 	v.Resize(2, 5)
