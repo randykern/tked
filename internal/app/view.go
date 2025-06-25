@@ -147,6 +147,15 @@ func (v *view) SetSelections(selections []Selection) {
 }
 
 func (v *view) InsertRune(r rune) {
+	sels := v.Selections()
+	if len(sels) > 0 {
+		startIdx := indexForPosition(v.buffer, sels[0].StartRow, sels[0].StartCol)
+		endIdx := indexForPosition(v.buffer, sels[0].EndRow, sels[0].EndCol)
+		v.buffer.Delete(startIdx, endIdx)
+		v.SetCursor(sels[0].StartRow, sels[0].StartCol)
+		v.SetSelections(nil)
+	}
+
 	cursorRow, cursorCol := v.Cursor()
 	idxForRow, cursorRow := v.buffer.IndexForRow(cursorRow)
 	idx := idxForRow
@@ -409,4 +418,16 @@ func parseRow(buffer Buffer, row int, idxStart int) []colInfo {
 	}
 
 	return colInfos
+}
+
+func indexForPosition(buffer Buffer, row, col int) int {
+	idxRowStart, actualRow := buffer.IndexForRow(row)
+	colInfos := parseRow(buffer, actualRow, idxRowStart)
+	if len(colInfos) == 0 {
+		return idxRowStart
+	}
+	if col >= len(colInfos) {
+		return colInfos[len(colInfos)-1].idx + 1
+	}
+	return colInfos[col].idx
 }
