@@ -183,6 +183,17 @@ func (v *view) InsertRune(r rune) {
 }
 
 func (v *view) DeleteRune(forward bool) {
+	// If there is a selection, delete the selected text and clear selections.
+	selections := v.Selections()
+	if len(selections) > 0 {
+		startIdx := v.indexForRowCol(selections[0].StartRow, selections[0].StartCol)
+		endIdx := v.indexForRowCol(selections[0].EndRow, selections[0].EndCol)
+		v.buffer.Delete(startIdx, endIdx)
+		v.SetCursor(selections[0].StartRow, selections[0].StartCol)
+		v.SetSelections([]Selection{})
+		return
+	}
+
 	cursorRow, cursorCol := v.Cursor()
 
 	idxForRow, cursorRow := v.buffer.IndexForRow(cursorRow)
@@ -370,6 +381,19 @@ type colInfo struct {
 	newChar bool
 	r       rune
 	idx     int
+}
+
+func (v *view) indexForRowCol(row, col int) int {
+	idxRowStart, actualRow := v.buffer.IndexForRow(row)
+	row = actualRow
+	colInfos := parseRow(v.buffer, row, idxRowStart)
+	if len(colInfos) == 0 {
+		return idxRowStart
+	}
+	if col >= len(colInfos) {
+		return colInfos[len(colInfos)-1].idx + 1
+	}
+	return colInfos[col].idx
 }
 
 func parseRow(buffer Buffer, row int, idxStart int) []colInfo {
