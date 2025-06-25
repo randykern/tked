@@ -275,6 +275,7 @@ func (b *buffer) notifyChange(start, end int) {
 	lspClient := lsp.GetLSP(b.GetFilename())
 	if lspClient != nil {
 		lspClient.DidChangeFull(b.GetFilename(), b.GetVersion(), b.Contents().String())
+		b.updateSemanticTokens()
 	}
 }
 
@@ -316,10 +317,12 @@ func NewBuffer(filename string, contents rope.Rope) Buffer {
 		},
 	}
 	b.SetFilename(filename)
+	registerSyntaxProperty()
 
 	lspClient := lsp.GetLSP(filename)
 	if lspClient != nil {
 		lspClient.DidOpen(filename, b.version, b.contents.rope.String())
+		b.updateSemanticTokens()
 	}
 	return b
 }

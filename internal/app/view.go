@@ -301,6 +301,12 @@ func (v *view) Draw(screen tcell.Screen, topOffset, leftOffset int) {
 	viewHeight, viewWidth := v.Size()
 	viewTop, viewLeft := v.TopLeft()
 	selections := v.Selections()
+	tokensAny := v.buffer.GetProperty(syntaxTokensProp)
+	var tokens []syntaxToken
+	if tokensAny != nil {
+		tokens = tokensAny.([]syntaxToken)
+	}
+	tokenIdx := 0
 
 	idxRowStart, _ := v.buffer.IndexForRow(viewTop)
 	for row := viewTop; row < viewTop+viewHeight; row++ {
@@ -311,6 +317,12 @@ func (v *view) Draw(screen tcell.Screen, topOffset, leftOffset int) {
 			for col, colInfo := range colInfos {
 				if col >= viewLeft && col < viewLeft+viewWidth {
 					style := tcell.StyleDefault
+					for tokenIdx < len(tokens) && colInfo.idx >= tokens[tokenIdx].end {
+						tokenIdx++
+					}
+					if tokenIdx < len(tokens) && colInfo.idx >= tokens[tokenIdx].start && colInfo.idx < tokens[tokenIdx].end {
+						style = style.Foreground(colorForToken(tokens[tokenIdx].typ))
+					}
 					if isSelected(selections, row, col) {
 						style = style.Reverse(true)
 					}

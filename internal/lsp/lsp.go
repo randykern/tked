@@ -21,6 +21,9 @@ type LSPClient interface {
 
 	// TODO: Cleanup server capabilities
 	ServerTextDocumentSyncOptions() protocol.TextDocumentSyncOptions
+
+	// SemanticTokens returns semantic tokens for the given file.
+	SemanticTokens(filename string) (*protocol.SemanticTokens, error)
 }
 
 type lspClient struct {
@@ -141,6 +144,20 @@ func (lspClient) Configuration(context.Context, *protocol.ConfigurationParams) (
 }
 func (lspClient) WorkspaceFolders(context.Context) ([]protocol.WorkspaceFolder, error) {
 	return nil, nil
+}
+
+func (c *lspClient) SemanticTokens(filename string) (*protocol.SemanticTokens, error) {
+	if c.server == nil {
+		return nil, nil
+	}
+
+	tokens, err := c.server.SemanticTokensFull(context.TODO(), &protocol.SemanticTokensParams{
+		TextDocument: protocol.TextDocumentIdentifier{URI: protocol.DocumentURI(filename)},
+	})
+	if err != nil {
+		tklog.Error("LSP error on SemanticTokens %s: %v", filename, err)
+	}
+	return tokens, err
 }
 
 var startLSPClientFunc = startLSPClient
