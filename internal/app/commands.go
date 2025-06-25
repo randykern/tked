@@ -157,12 +157,24 @@ func (c *CommandMove) Name() string {
 
 func (c *CommandMove) Execute(app App, ev *tcell.EventKey) (bool, error) {
 	view := app.GetCurrentView()
-	row, col := view.Cursor()
-	row += c.dRow
-	col += c.dCol
+	oldRow, oldCol := view.Cursor()
+	row := oldRow + c.dRow
+	col := oldCol + c.dCol
 	row = max(0, row)
 	col = max(0, col)
 	view.SetCursor(row, col)
+
+	if ev != nil && ev.Modifiers()&tcell.ModShift != 0 {
+		aRow, aCol, ok := view.Anchor()
+		if !ok {
+			view.SetAnchor(oldRow, oldCol)
+			aRow, aCol = oldRow, oldCol
+		}
+		view.SetSelections([]Selection{{StartRow: aRow, StartCol: aCol, EndRow: row, EndCol: col}})
+	} else {
+		view.ClearAnchor()
+		view.SetSelections(nil)
+	}
 	return false, nil
 }
 
