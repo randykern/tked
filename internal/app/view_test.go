@@ -374,6 +374,19 @@ func TestViewSelections(t *testing.T) {
 	}
 }
 
+func TestViewInsertRune_ReplacesSelection(t *testing.T) {
+	v := NewView("", rope.NewRope("abcde"))
+	v.SetSelections([]Selection{{StartRow: 0, StartCol: 1, EndRow: 0, EndCol: 3}})
+	v.SetCursor(0, 3)
+	v.InsertRune('X')
+	if got := v.Buffer().Contents().String(); got != "aXde" {
+		t.Fatalf("expected 'aXde' got %q", got)
+	}
+	row, col := v.Cursor()
+	if row != 0 || col != 2 {
+		t.Fatalf("expected cursor (0,2) got (%d,%d)", row, col)
+}
+  
 func TestViewDrawSelectedText(t *testing.T) {
 	v := NewView("", rope.NewRope("hello"))
 	v.Resize(1, 5)
