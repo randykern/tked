@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
@@ -37,5 +38,27 @@ func TestOpenFiles(t *testing.T) {
 		if app.opened[i] != f {
 			t.Fatalf("file %d expected %s got %s", i, f, app.opened[i])
 		}
+	}
+}
+
+func TestOpenFilesFirstFileActive(t *testing.T) {
+	app.ResetApp()
+	application, err := app.NewApp()
+	if err != nil {
+		t.Fatalf("unexpected error creating app: %v", err)
+	}
+
+	f1, _ := os.CreateTemp("", "file1*.txt")
+	defer os.Remove(f1.Name())
+	f2, _ := os.CreateTemp("", "file2*.txt")
+	defer os.Remove(f2.Name())
+
+	if err := openFiles(application, []string{f1.Name(), f2.Name()}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	got := application.GetCurrentView().Buffer().GetFilename()
+	if got != f1.Name() {
+		t.Fatalf("expected first file active got %s", got)
 	}
 }
