@@ -63,6 +63,24 @@ func TestViewDeleteRuneNewline(t *testing.T) {
 	}
 }
 
+func TestViewDeleteRuneSelection(t *testing.T) {
+	v := NewView("", rope.NewRope("hello"))
+	sel := []Selection{{StartRow: 0, StartCol: 1, EndRow: 0, EndCol: 3}}
+	v.SetSelections(sel)
+	v.SetCursor(0, 3)
+	v.DeleteRune(false)
+	if got := v.Buffer().Contents().String(); got != "hlo" {
+		t.Fatalf("expected 'hlo' got %q", got)
+	}
+	row, col := v.Cursor()
+	if row != 0 || col != 1 {
+		t.Fatalf("expected cursor (0,1) got (%d,%d)", row, col)
+	}
+	if len(v.Selections()) != 0 {
+		t.Fatalf("expected selections cleared")
+	}
+}
+
 // Comprehensive edge case tests for View.InsertRune function
 
 func TestViewInsertRune_EmptyBuffer(t *testing.T) {
