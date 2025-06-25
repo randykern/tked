@@ -33,6 +33,11 @@ type View interface {
 	// to ensure the cursor is visible.
 	SetCursor(row, col int)
 
+	// Selections returns the list of selected regions in the view.
+	Selections() []Selection
+	// SetSelections replaces the current list of selections.
+	SetSelections(selections []Selection)
+
 	// InsertRune inserts a rune into the buffer at the cursor position.
 	InsertRune(r rune)
 	// DeleteRune deletes a rune. When forward is true it deletes the rune
@@ -60,6 +65,15 @@ type view struct {
 type cursor struct {
 	row int
 	col int
+}
+
+// Selection represents a region of selected text within a view.
+// The start position is inclusive and the end position is exclusive.
+type Selection struct {
+	StartRow int
+	StartCol int
+	EndRow   int
+	EndCol   int
 }
 
 func (v *view) Buffer() Buffer {
@@ -109,6 +123,27 @@ func (v *view) SetCursor(row, col int) {
 
 	// Adjust the viewport to ensure the cursor is visible.
 	v.ensureCursorVisible()
+}
+
+func (v *view) Selections() []Selection {
+	prop := v.buffer.GetProperty(selectionsProp)
+	if prop == nil {
+		return nil
+	}
+	selections := prop.([]Selection)
+	out := make([]Selection, len(selections))
+	copy(out, selections)
+	return out
+}
+
+func (v *view) SetSelections(selections []Selection) {
+	if selections == nil {
+		v.buffer.SetProperty(selectionsProp, nil)
+		return
+	}
+	copySelections := make([]Selection, len(selections))
+	copy(copySelections, selections)
+	v.buffer.SetProperty(selectionsProp, copySelections)
 }
 
 func (v *view) InsertRune(r rune) {
@@ -305,6 +340,7 @@ func NewView(filename string, contents rope.Rope) View {
 		left:   0,
 	}
 	v.SetCursor(0, 0)
+	v.SetSelections([]Selection{})
 	v.buffer.OnChange(v.onBufferChange, v)
 	return v
 }
@@ -319,10 +355,14 @@ func NewViewFromReader(filename string, r io.Reader) (View, error) {
 }
 
 var cursorProp PropKey
+var selectionsProp PropKey
 
 func registerViewProperties() {
 	if cursorProp == nil {
 		cursorProp = RegisterBufferProperty()
+	}
+	if selectionsProp == nil {
+		selectionsProp = RegisterBufferProperty()
 	}
 }
 

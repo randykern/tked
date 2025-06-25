@@ -338,3 +338,18 @@ func TestViewInsertRune_LineEndingVariations(t *testing.T) {
 		t.Fatalf("expected cursor (2,1) got (%d,%d)", row, col)
 	}
 }
+
+func TestViewSelections(t *testing.T) {
+	v := NewView("", rope.NewRope("abc"))
+	if len(v.Selections()) != 0 {
+		t.Fatalf("expected no selections initially")
+	}
+
+	sel := []Selection{{StartRow: 0, StartCol: 1, EndRow: 0, EndCol: 2}}
+	v.SetSelections(sel)
+
+	got := v.Selections()
+	if len(got) != 1 || got[0] != sel[0] {
+		t.Fatalf("unexpected selections %#v", got)
+	}
+}
