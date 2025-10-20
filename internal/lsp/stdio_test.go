@@ -35,8 +35,8 @@ func (m *mockWriteCloser) Close() error {
 }
 
 func TestStdioClose(t *testing.T) {
-	readErr := errors.New("read close error")
-	writeErr := errors.New("write close error")
+	readErr := errors.New("Read close error")
+	writeErr := errors.New("Write close error")
 	tests := []struct {
 		name     string
 		readErr  error
